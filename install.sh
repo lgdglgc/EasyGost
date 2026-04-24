@@ -133,61 +133,20 @@ fi
 
 echo -e "${Info} Python版本: $(python3 --version)"
 
-# ============ 安装Python包管理工具 ============
-echo -e "\n${Warn} 检查Python包管理工具..."
-
-# 检查pip3是否存在
-if ! command -v pip3 &> /dev/null; then
-    echo -e "${Warn} pip3未安装，尝试安装..."
-    
-    # 检测系统类型
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    fi
-    
-    # 根据系统安装pip
-    case "$OS" in
-        centos|rhel|fedora)
-            echo -e "${Info} 使用yum安装pip..."
-            yum install -y python3-pip > /dev/null 2>&1 || true
-            ;;
-        ubuntu|debian)
-            echo -e "${Info} 使用apt安装pip..."
-            apt update > /dev/null 2>&1 || true
-            apt install -y python3-pip > /dev/null 2>&1 || true
-            ;;
-        alpine)
-            echo -e "${Info} 使用apk安装pip..."
-            apk add --no-cache py3-pip > /dev/null 2>&1 || true
-            ;;
-    esac
-    
-    # 如果还是没有pip3，使用python3 -m pip
-    if ! command -v pip3 &> /dev/null; then
-        echo -e "${Warn} pip3仍未安装，将使用 python3 -m pip"
-        PIP_CMD="python3 -m pip"
-    else
-        PIP_CMD="pip3"
-    fi
-else
-    PIP_CMD="pip3"
-fi
-
-echo -e "${Info} Python包管理工具: $PIP_CMD"
-
 # ============ 安装EasyGost Web管理面板 ============
 echo -e "\n${Warn} 安装EasyGost Web管理面板..."
 
-# 安装依赖
-echo -e "${Info} 安装Python依赖..."
-$PIP_CMD install flask flask-cors -q --no-cache-dir 2>/dev/null || {
-    echo -e "${Warn} 使用pip安装失败，尝试使用python3 -m pip..."
-    python3 -m pip install flask flask-cors -q --no-cache-dir || {
-        echo -e "${Error} Flask安装失败"
-        exit 1
-    }
+# 安装依赖 - 使用python3 -m pip确保兼容性
+echo -e "${Info} 安装Python依赖 (Flask, Flask-CORS)..."
+python3 -m pip install --upgrade pip -q > /dev/null 2>&1 || true
+python3 -m pip install flask flask-cors -q --no-cache-dir || {
+    echo -e "${Error} Flask安装失败"
+    echo "请手动安装依赖:"
+    echo "  python3 -m pip install flask flask-cors"
+    exit 1
 }
+
+echo -e "${Info} 依赖安装完成"
 
 # 创建应用目录
 APP_DIR="/opt/gost-web-manager"

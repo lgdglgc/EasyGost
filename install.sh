@@ -33,7 +33,48 @@ fi
 # ============ GOST 检测和安装 ============
 echo -e "\n${Warn} 检查GOST是否已安装..."
 
-if ! command -v gost &> /dev/null; then
+# 检测GOST的多种方式
+GOST_FOUND=0
+if command -v gost &> /dev/null; then
+    GOST_FOUND=1
+elif [ -f /usr/bin/gost ]; then
+    GOST_FOUND=1
+elif [ -f /usr/local/bin/gost ]; then
+    GOST_FOUND=1
+fi
+
+# 如果未找到GOST，尝试通过包管理器检查
+if [ $GOST_FOUND -eq 0 ]; then
+    # 检测系统类型
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo -e "${Error} 无法检测系统类型"
+        exit 1
+    fi
+    
+    # 用包管理器检查是否已安装
+    case "$OS" in
+        centos|rhel|fedora)
+            if rpm -q gost > /dev/null 2>&1; then
+                GOST_FOUND=1
+            fi
+            ;;
+        ubuntu|debian)
+            if dpkg -l | grep -q gost; then
+                GOST_FOUND=1
+            fi
+            ;;
+        alpine)
+            if apk info | grep -q gost; then
+                GOST_FOUND=1
+            fi
+            ;;
+    esac
+fi
+
+if [ $GOST_FOUND -eq 0 ]; then
     echo -e "${Error} 未检测到GOST\n"
     
     # 询问用户是否安装GOST
@@ -56,13 +97,10 @@ if ! command -v gost &> /dev/null; then
     
     echo -e "${Info} 开始安装GOST..."
     
-    # 检测系统类型
-    if [ -f /etc/os-release ]; then
+    # 检测系统类型（如果之前没检测过）
+    if [ -z "$OS" ] && [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$ID
-    else
-        echo -e "${Error} 无法检测系统类型"
-        exit 1
     fi
     
     # 根据系统安装GOST
@@ -70,16 +108,25 @@ if ! command -v gost &> /dev/null; then
         centos|rhel|fedora)
             echo -e "${Info} 检测到系统: CentOS/RHEL/Fedora"
             yum install -y epel-release > /dev/null 2>&1 || true
-            yum install -y gost > /dev/null 2>&1
+            yum install -y gost > /dev/null 2>&1 || {
+                echo -e "${Error} GOST安装失败"
+                exit 1
+            }
             ;;
         ubuntu|debian)
             echo -e "${Info} 检测到系统: Ubuntu/Debian"
-            apt update > /dev/null 2>&1
-            apt install -y gost > /dev/null 2>&1
+            apt update > /dev/null 2>&1 || true
+            apt install -y gost > /dev/null 2>&1 || {
+                echo -e "${Error} GOST安装失败"
+                exit 1
+            }
             ;;
         alpine)
             echo -e "${Info} 检测到系统: Alpine Linux"
-            apk add --no-cache gost > /dev/null 2>&1
+            apk add --no-cache gost > /dev/null 2>&1 || {
+                echo -e "${Error} GOST安装失败"
+                exit 1
+            }
             ;;
         *)
             echo -e "${Error} 不支持的系统: $OS"
@@ -89,17 +136,25 @@ if ! command -v gost &> /dev/null; then
     esac
     
     # 验证安装
-    if command -v gost &> /dev/null; then
+    sleep 1
+    if command -v gost &> /dev/null || [ -f /usr/bin/gost ] || [ -f /usr/local/bin/gost ]; then
         echo -e "${Info} GOST安装成功"
     else
-        echo -e "${Error} GOST安装失败，请手动安装后重试"
+        echo -e "${Error} GOST安装失败，请手动检查或重试"
         exit 1
     fi
 else
     echo -e "${Info} 已检测到GOST"
 fi
 
-echo -e "${Info} GOST版本: $(gost -v | head -1)"
+# 获取GOST版本
+if command -v gost &> /dev/null; then
+    echo -e "${Info} GOST版本: $(gost -v 2>/dev/null | head -1 || echo '版本检查失败')"
+elif [ -f /usr/bin/gost ]; then
+    echo -e "${Info} GOST版本: $(/usr/bin/gost -v 2>/dev/null | head -1 || echo '版本检查失败')"
+else
+    echo -e "${Info} GOST已安装"
+fi
 
 # ============ 检查Python环境 ============
 echo -e "\n${Warn} 检查Python环境..."

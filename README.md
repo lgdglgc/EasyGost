@@ -17,6 +17,7 @@
 - 🎨 **现代设计** - 深色主题，响应式布局
 - 📱 **17 种规则类型** - 涵盖 TCP/UDP、TLS、WS、SS、SOCKS5 等
 - 🔐 **登录鉴权** - Web 面板带密码保护，防止未授权访问
+- ⚡ **批量添加规则** - 一次粘贴多条转发规则，瞬间生效
 
 ## 🏗️ 系统架构
 
@@ -24,12 +25,13 @@
 浏览器 :8888
     └──▶ socat（TCP 监听，fork 处理并发）
               └──▶ gost-web.sh（Bash HTTP 处理器）
-                        ├── GET  /               → 返回 index.html
-                        ├── POST /api/login      → 验证账密 → 返回 Token
-                        ├── GET  /api/rules      → 读取 rawconf → JSON
-                        ├── POST /api/rules      → 写入 rawconf → 重建配置 → 重启 gost
-                        ├── DELETE /api/rules/N  → 删除第 N 行 → 重建配置 → 重启 gost
-                        └── GET  /api/status     → systemctl is-active gost
+                        ├── GET  /                  → 返回 index.html
+                        ├── POST /api/login         → 验证账密 → 返回 Token
+                        ├── GET  /api/rules         → 读取 rawconf → JSON
+                        ├── POST /api/rules         → 写入 rawconf → 重建配置 → 重启 gost
+                        ├── POST /api/rules/batch   → 批量写入 rawconf → 重建配置 → 重启 gost
+                        ├── DELETE /api/rules/N     → 删除第 N 行 → 重建配置 → 重启 gost
+                        └── GET  /api/status        → systemctl is-active gost
 ```
 
 ### 技术栈
@@ -114,6 +116,106 @@ systemctl restart gost-web
 
 > 💡 **说明**：登录 Token 存储于 `/tmp/gost-web-token`，重启服务器或面板后会自动刷新，需要重新登录。
 
+---
+
+## ⚡ 批量添加规则
+
+批量添加是本面板的核心特色功能，特别适合需要**一次性导入大量转发规则**的场景，例如从服务商获取到一批节点列表后快速配置。
+
+### 打开批量添加窗口
+
+登录面板后，点击规则列表右上角的 **「⚡ 批量添加」** 按钮即可打开批量添加弹窗。
+
+### 填写格式
+
+每行填写一条规则，格式如下：
+
+```
+本地端口  目标IP/域名  目标端口
+```
+
+字段之间使用**空格**或 **Tab** 分隔，三个字段缺一不可。
+
+**示例：**
+
+```
+10000 1.2.3.4 443
+10001 1.2.3.4 444
+10002 5.6.7.8 8080
+10003 example.com 443
+10004 node1.example.com 8388
+```
+
+### 选择规则类型
+
+在弹窗顶部的下拉菜单中选择转发类型，**该类型将统一应用到本次批量添加的所有规则**。
+
+> 💡 如需添加不同类型的规则，请分多次使用批量添加功能，每次选择对应类型。
+
+### 实时预览
+
+粘贴或输入内容后，弹窗会**实时解析**并展示预览区域：
+
+- ✅ **绿色 ✓**：该行格式正确，将被添加
+- ❌ **红色 ✗**：该行格式有误，附带错误原因（如端口超出范围、字段缺失等），**不会**被提交
+
+预览区显示格式：`本地端口 → 目标IP:目标端口`，同时统计有效/无效条数。
+
+### 提交与生效
+
+确认预览无误后，点击 **「✓ 批量保存并应用」** 按钮：
+
+1. 仅提交解析成功的有效规则
+2. 有效规则逐条追加到 `/etc/gost/rawconf`
+3. 后端重新生成 `config.json`
+4. 自动重启 `gost` 服务，规则立即生效
+5. 弹窗关闭，规则列表自动刷新
+
+### 常见错误与解决
+
+| 错误提示 | 原因 | 解决方法 |
+|----------|------|----------|
+| `格式错误，需 3 个字段` | 该行字段不足 3 个 | 补全「本地端口 目标IP 目标端口」三个字段 |
+| `本地端口无效: XXXX` | 端口非数字或超出 1-65535 范围 | 检查本地端口填写是否正确 |
+| `目标端口无效: XXXX` | 端口非数字或超出 1-65535 范围 | 检查目标端口填写是否正确 |
+| `没有有效规则` | 所有行均解析失败 | 检查整体格式，确保使用空格/Tab 分隔 |
+| `解析规则失败，无有效记录` | 后端解析异常 | 检查输入是否含特殊字符，重试 |
+
+### 批量添加 API（进阶）
+
+批量添加功能通过以下 API 实现，也可直接调用：
+
+```
+POST /api/rules/batch
+Header: X-Auth-Token: <你的Token>
+Content-Type: application/json
+```
+
+请求体格式：
+
+```json
+{
+  "type": "nonencrypt",
+  "rules": [
+    { "local_port": "10000", "dest_ip": "1.2.3.4", "dest_port": "443" },
+    { "local_port": "10001", "dest_ip": "1.2.3.4", "dest_port": "444" },
+    { "local_port": "10002", "dest_ip": "5.6.7.8", "dest_port": "8080" }
+  ]
+}
+```
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "added": 3,
+  "message": "3 条规则已添加并重启"
+}
+```
+
+---
+
 ## 🛠️ 常用命令
 
 ```bash
@@ -189,6 +291,17 @@ journalctl -u gost -n 30
 
 # 检查配置文件是否正确生成
 cat /etc/gost/config.json
+```
+
+### 批量添加后规则未出现
+
+```bash
+# 检查 rawconf 是否已写入
+cat /etc/gost/rawconf
+
+# 检查 GOST 是否成功重启
+systemctl status gost
+journalctl -u gost -n 20 --no-pager
 ```
 
 ### 修改 Web 端口

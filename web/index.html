@@ -185,7 +185,50 @@
     table { font-size: .8rem; }
     th, td { padding: .6rem .6rem; }
     .header { padding: .75rem 1rem; }
+    .section-btns { flex-wrap: wrap; }
   }
+
+  /* ── Batch Modal extras ── */
+  .modal-lg { max-width: 600px; }
+  .batch-textarea {
+    width: 100%; min-height: 160px; resize: vertical;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: .7rem .9rem; font-size: .85rem;
+    font-family: 'Courier New', monospace; outline: none;
+    transition: border-color .2s, box-shadow .2s; line-height: 1.6;
+  }
+  .batch-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,142,245,.15); }
+  .batch-hint {
+    font-size: .76rem; color: var(--muted); margin-top: .5rem; line-height: 1.6;
+  }
+  .batch-hint code {
+    background: rgba(108,142,245,.12); color: var(--accent2);
+    border-radius: 4px; padding: .05rem .35rem; font-size: .78rem;
+  }
+  .preview-box {
+    margin-top: 1rem; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    display: none;
+  }
+  .preview-box.show { display: block; }
+  .preview-header {
+    background: rgba(108,142,245,.08); padding: .5rem 1rem;
+    font-size: .75rem; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .preview-count { color: var(--accent); font-weight: 700; }
+  .preview-list { max-height: 180px; overflow-y: auto; }
+  .preview-item {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .45rem 1rem; border-top: 1px solid var(--border);
+    font-size: .82rem; font-family: monospace;
+  }
+  .preview-item:first-child { border-top: none; }
+  .preview-item .pi-ok  { color: var(--success); font-size: .7rem; }
+  .preview-item .pi-err { color: var(--danger);  font-size: .7rem; }
+  .preview-item .pi-text { flex: 1; }
+  .preview-item .pi-err-msg { color: var(--danger); font-size: .76rem; }
+  .section-btns { display: flex; gap: .6rem; }
 </style>
 </head>
 <body>
@@ -251,7 +294,10 @@
 
     <div class="section-header">
       <span class="section-title">转发规则列表</span>
-      <button class="btn btn-primary" onclick="openModal()">＋ 添加规则</button>
+      <div class="section-btns">
+        <button class="btn btn-ghost" onclick="openBatchModal()">⚡ 批量添加</button>
+        <button class="btn btn-primary" onclick="openModal()">＋ 添加规则</button>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -330,6 +376,68 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Batch Add Modal -->
+<div class="modal-overlay" id="batchOverlay" onclick="closeBatchModal(event)">
+  <div class="modal modal-lg">
+    <div class="modal-title">⚡ 批量添加转发规则</div>
+    <div class="form-group">
+      <label class="form-label">转发类型（统一应用到所有规则）</label>
+      <select class="form-control" id="bType">
+        <optgroup label="── 基础转发 ──">
+          <option value="nonencrypt">TCP+UDP 不加密转发</option>
+        </optgroup>
+        <optgroup label="── 加密隧道（中转机）──">
+          <option value="encrypttls">加密隧道 TLS</option>
+          <option value="encryptws">加密隧道 WS</option>
+          <option value="encryptwss">加密隧道 WSS</option>
+        </optgroup>
+        <optgroup label="── 解密对接（落地机）──">
+          <option value="decrypttls">解密 TLS</option>
+          <option value="decryptws">解密 WS</option>
+          <option value="decryptwss">解密 WSS</option>
+        </optgroup>
+        <optgroup label="── 代理 ──">
+          <option value="ss">Shadowsocks</option>
+          <option value="socks">SOCKS5</option>
+          <option value="http">HTTP</option>
+        </optgroup>
+        <optgroup label="── 均衡负载 ──">
+          <option value="peerno">均衡负载 不加密</option>
+          <option value="peertls">均衡负载 TLS</option>
+          <option value="peerws">均衡负载 WS</option>
+          <option value="peerwss">均衡负载 WSS</option>
+        </optgroup>
+        <optgroup label="── CDN 转发 ──">
+          <option value="cdnno">CDN 不加密</option>
+          <option value="cdnws">CDN WS</option>
+          <option value="cdnwss">CDN WSS</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">规则列表（每行一条）</label>
+      <textarea class="batch-textarea" id="batchText"
+        placeholder="10000 1.2.3.4 443&#10;10001 1.2.3.4 444&#10;10002 5.6.7.8 8080"
+        oninput="parseBatch()"></textarea>
+      <div class="batch-hint">
+        格式：<code>本地端口 目标IP 目标端口</code>，每行一条，空行自动跳过。<br>
+        示例：<code>10000 1.2.3.4 443</code> &nbsp;或&nbsp; <code>10001 example.com 80</code>
+      </div>
+    </div>
+    <div class="preview-box" id="batchPreview">
+      <div class="preview-header">
+        解析预览 &nbsp;<span class="preview-count" id="previewCount">0 条</span>
+      </div>
+      <div class="preview-list" id="previewList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeBatchModal()">取消</button>
+      <button class="btn btn-success" id="batchSubmitBtn" onclick="submitBatch()" disabled>✓ 批量保存并应用</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const API = '';
@@ -516,6 +624,110 @@ function toast(msg, type='ok') {
   el.textContent = msg; el.className = `toast show ${type}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+
+// ── Batch Add ─────────────────────────────────────────────────────────────────
+let batchParsed = []; // [{lp, dip, dp, err}]
+
+function openBatchModal() {
+  document.getElementById('batchText').value = '';
+  document.getElementById('previewList').innerHTML = '';
+  document.getElementById('batchPreview').classList.remove('show');
+  document.getElementById('previewCount').textContent = '0 条';
+  document.getElementById('batchSubmitBtn').disabled = true;
+  batchParsed = [];
+  document.getElementById('batchOverlay').classList.add('show');
+}
+
+function closeBatchModal(e) {
+  if (!e || e.target === document.getElementById('batchOverlay'))
+    document.getElementById('batchOverlay').classList.remove('show');
+}
+
+function parseBatch() {
+  const raw = document.getElementById('batchText').value;
+  const lines = raw.split('\n');
+  batchParsed = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue; // skip blank lines
+    // Support both spaces and tabs as delimiter
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 3) {
+      batchParsed.push({ raw: trimmed, err: '格式错误，需 3 个字段' });
+    } else {
+      const [lp, dip, dp] = parts;
+      if (!/^\d+$/.test(lp) || parseInt(lp) < 1 || parseInt(lp) > 65535)
+        batchParsed.push({ raw: trimmed, err: `本地端口无效: ${lp}` });
+      else if (!/^\d+$/.test(dp) || parseInt(dp) < 1 || parseInt(dp) > 65535)
+        batchParsed.push({ raw: trimmed, err: `目标端口无效: ${dp}` });
+      else
+        batchParsed.push({ raw: trimmed, lp, dip, dp });
+    }
+  }
+
+  const preview = document.getElementById('batchPreview');
+  const list    = document.getElementById('previewList');
+  const count   = document.getElementById('previewCount');
+  const btn     = document.getElementById('batchSubmitBtn');
+
+  if (!batchParsed.length) {
+    preview.classList.remove('show');
+    btn.disabled = true;
+    return;
+  }
+
+  const validCount = batchParsed.filter(r => !r.err).length;
+  count.textContent = `${validCount} 条有效 / 共 ${batchParsed.length} 条`;
+  list.innerHTML = batchParsed.map(r => {
+    if (r.err) return `
+      <div class="preview-item">
+        <span class="pi-err">✗</span>
+        <span class="pi-text" style="color:var(--muted)">${r.raw}</span>
+        <span class="pi-err-msg">${r.err}</span>
+      </div>`;
+    return `
+      <div class="preview-item">
+        <span class="pi-ok">✓</span>
+        <span class="pi-text"><span class="port-code">${r.lp}</span> → <span style="color:var(--text)">${r.dip}</span>:<span class="port-code">${r.dp}</span></span>
+      </div>`;
+  }).join('');
+
+  preview.classList.add('show');
+  btn.disabled = validCount === 0;
+}
+
+async function submitBatch() {
+  const valid = batchParsed.filter(r => !r.err);
+  if (!valid.length) { toast('没有有效规则', 'err'); return; }
+
+  const type = document.getElementById('bType').value;
+  const btn  = document.getElementById('batchSubmitBtn');
+  btn.disabled = true; btn.textContent = '提交中...';
+
+  try {
+    const payload = {
+      type,
+      rules: valid.map(r => ({ local_port: r.lp, dest_ip: r.dip, dest_port: r.dp }))
+    };
+    const d = await fetchJSON('/api/rules/batch', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (d.success) {
+      toast(`✓ 成功添加 ${d.added} 条规则，GOST 已重启`, 'ok');
+      closeBatchModal();
+      loadRules();
+      loadStatus();
+    } else {
+      toast('批量添加失败: ' + (d.error || '未知错误'), 'err');
+    }
+  } catch(e) {
+    if (e.message !== 'Unauthorized') toast('网络错误', 'err');
+  }
+  btn.disabled = false; btn.textContent = '✓ 批量保存并应用';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

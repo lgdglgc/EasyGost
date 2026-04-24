@@ -223,6 +223,40 @@ api_restart() {
     json_ok '{"success":true,"message":"GOST已重启"}'
 }
 
+api_batch_add_rules() {
+    local body="$1"
+    # Extract global type
+    local type
+    type=$(printf '%s' "$body" | grep -o '"type":"[^"]*"' | head -1 | cut -d'"' -f4)
+    [[ -z "$type" ]] && { json_err "缺少 type 字段"; return; }
+
+    # Extract the "rules":[...] array as a single string, then split by }
+    local rules_raw added=0
+    rules_raw=$(printf '%s' "$body" | grep -o '"rules":\[.*\]' | sed 's/"rules"://')
+
+    # Parse each object {"local_port":"...","dest_ip":"...","dest_port":"..."}
+    local lp dip dp
+    while IFS= read -r obj; do
+        [[ -z "$obj" ]] && continue
+        lp=$(printf '%s'  "$obj" | grep -o '"local_port":"[^"]*"' | head -1 | cut -d'"' -f4)
+        dip=$(printf '%s' "$obj" | grep -o '"dest_ip":"[^"]*"'    | head -1 | cut -d'"' -f4)
+        dp=$(printf '%s'  "$obj" | grep -o '"dest_port":"[^"]*"'  | head -1 | cut -d'"' -f4)
+        if [[ -n "$lp" && -n "$dp" ]]; then
+            printf '%s/%s#%s#%s\n' "$type" "$lp" "$dip" "$dp" >> "$RAW_CONF"
+            ((added++))
+        fi
+    done < <(printf '%s' "$rules_raw" | tr '}' '\n' | sed 's/^[^{]*//' | grep '{')
+
+    if [[ $added -eq 0 ]]; then
+        json_err "解析规则失败，无有效记录"
+        return
+    fi
+
+    generate_config
+    systemctl restart gost 2>/dev/null
+    json_ok "{\"success\":true,\"added\":$added,\"message\":\"$added 条规则已添加并重启\"}"
+}
+
 # ─── Serve HTML ──────────────────────────────────────────────────────────────
 
 serve_html() {
@@ -274,6 +308,8 @@ case "$method:$path" in
     POST:/api/login)     api_login "$body" ;;
     GET:/api/rules)
         check_auth "$auth_token" && api_get_rules || json_401 ;;
+    POST:/api/rules/batch)
+        check_auth "$auth_token" && api_batch_add_rules "$body" || json_401 ;;
     POST:/api/rules)
         check_auth "$auth_token" && api_add_rule "$body" || json_401 ;;
     DELETE:/api/rules/*)

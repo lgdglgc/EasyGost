@@ -33,48 +33,8 @@ fi
 # ============ GOST 检测和安装 ============
 echo -e "\n${Warn} 检查GOST是否已安装..."
 
-# 检测GOST的多种方式
-GOST_FOUND=0
-if command -v gost &> /dev/null; then
-    GOST_FOUND=1
-elif [ -f /usr/bin/gost ]; then
-    GOST_FOUND=1
-elif [ -f /usr/local/bin/gost ]; then
-    GOST_FOUND=1
-fi
-
-# 如果未找到GOST，尝试通过包管理器检查
-if [ $GOST_FOUND -eq 0 ]; then
-    # 检测系统类型
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    else
-        echo -e "${Error} 无法检测系统类型"
-        exit 1
-    fi
-    
-    # 用包管理器检查是否已安装
-    case "$OS" in
-        centos|rhel|fedora)
-            if rpm -q gost > /dev/null 2>&1; then
-                GOST_FOUND=1
-            fi
-            ;;
-        ubuntu|debian)
-            if dpkg -l | grep -q gost; then
-                GOST_FOUND=1
-            fi
-            ;;
-        alpine)
-            if apk info | grep -q gost; then
-                GOST_FOUND=1
-            fi
-            ;;
-    esac
-fi
-
-if [ $GOST_FOUND -eq 0 ]; then
+# 检测GOST
+if ! command -v gost &> /dev/null; then
     echo -e "${Error} 未检测到GOST\n"
     
     # 询问用户是否安装GOST
@@ -82,79 +42,85 @@ if [ $GOST_FOUND -eq 0 ]; then
     
     if [[ "$install_gost" != "y" && "$install_gost" != "Y" ]]; then
         echo -e "${Error} 请先手动安装GOST后再运行此脚本"
-        echo ""
-        echo "安装GOST命令:"
-        echo -e "  ${Green_font_prefix}CentOS/RHEL:${Font_color_suffix}"
-        echo "    sudo yum install epel-release"
-        echo "    sudo yum install gost"
-        echo ""
-        echo -e "  ${Green_font_prefix}Ubuntu/Debian:${Font_color_suffix}"
-        echo "    sudo apt update"
-        echo "    sudo apt install gost"
-        echo ""
         exit 1
     fi
     
-    echo -e "${Info} 开始安装GOST..."
+    echo -e "${Info} 开始安装GOST (v2.11.2)..."
     
-    # 检测系统类型（如果之前没检测过）
-    if [ -z "$OS" ] && [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-    fi
-    
-    # 根据系统安装GOST
-    case "$OS" in
-        centos|rhel|fedora)
-            echo -e "${Info} 检测到系统: CentOS/RHEL/Fedora"
-            yum install -y epel-release > /dev/null 2>&1 || true
-            yum install -y gost > /dev/null 2>&1 || {
-                echo -e "${Error} GOST安装失败"
-                exit 1
-            }
+    # 检测架构
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64)
+            GOST_ARCH="amd64"
             ;;
-        ubuntu|debian)
-            echo -e "${Info} 检测到系统: Ubuntu/Debian"
-            apt update > /dev/null 2>&1 || true
-            apt install -y gost > /dev/null 2>&1 || {
-                echo -e "${Error} GOST安装失败"
-                exit 1
-            }
+        aarch64|arm64)
+            GOST_ARCH="arm64"
             ;;
-        alpine)
-            echo -e "${Info} 检测到系统: Alpine Linux"
-            apk add --no-cache gost > /dev/null 2>&1 || {
-                echo -e "${Error} GOST安装失败"
-                exit 1
-            }
+        armv7l)
+            GOST_ARCH="armv7"
+            ;;
+        i686)
+            GOST_ARCH="386"
             ;;
         *)
-            echo -e "${Error} 不支持的系统: $OS"
-            echo "请手动安装GOST后再运行此脚本"
-            exit 1
+            echo -e "${Error} 不支持的架构: $ARCH"
+            echo "请输入架构: 386/amd64/arm64/armv7/armv5"
+            read GOST_ARCH
             ;;
     esac
     
+    echo -e "${Info} 检测架构: $GOST_ARCH"
+    
+    # 创建临时目录
+    TMP_DIR=$(mktemp -d)
+    cd "$TMP_DIR" || exit 1
+    
+    # 从GitHub下载GOST 2.11.2
+    GOST_VERSION="2.11.2"
+    DOWNLOAD_URL="https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost-linux-${GOST_ARCH}-${GOST_VERSION}.gz"
+    
+    echo -e "${Info} 下载GOST二进制文件..."
+    if ! curl -fsSL "$DOWNLOAD_URL" -o "gost-linux-${GOST_ARCH}-${GOST_VERSION}.gz"; then
+        echo -e "${Error} 下载失败，请检查网络连接"
+        cd /
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+    
+    echo -e "${Info} 解压GOST..."
+    gunzip "gost-linux-${GOST_ARCH}-${GOST_VERSION}.gz" || {
+        echo -e "${Error} 解压失败"
+        cd /
+        rm -rf "$TMP_DIR"
+        exit 1
+    }
+    
+    echo -e "${Info} 安装GOST..."
+    mv "gost-linux-${GOST_ARCH}-${GOST_VERSION}" gost
+    install -m755 gost /usr/bin/gost || {
+        echo -e "${Error} 安装失败"
+        cd /
+        rm -rf "$TMP_DIR"
+        exit 1
+    }
+    
+    # 清理临时目录
+    cd /
+    rm -rf "$TMP_DIR"
+    
     # 验证安装
-    sleep 1
-    if command -v gost &> /dev/null || [ -f /usr/bin/gost ] || [ -f /usr/local/bin/gost ]; then
+    if command -v gost &> /dev/null; then
         echo -e "${Info} GOST安装成功"
     else
-        echo -e "${Error} GOST安装失败，请手动检查或重试"
+        echo -e "${Error} GOST安装失败"
         exit 1
     fi
 else
     echo -e "${Info} 已检测到GOST"
 fi
 
-# 获取GOST版本
-if command -v gost &> /dev/null; then
-    echo -e "${Info} GOST版本: $(gost -v 2>/dev/null | head -1 || echo '版本检查失败')"
-elif [ -f /usr/bin/gost ]; then
-    echo -e "${Info} GOST版本: $(/usr/bin/gost -v 2>/dev/null | head -1 || echo '版本检查失败')"
-else
-    echo -e "${Info} GOST已安装"
-fi
+# 显示GOST版本
+echo -e "${Info} GOST版本: $(gost -V 2>&1 || echo 'v2.11.2')"
 
 # ============ 检查Python环境 ============
 echo -e "\n${Warn} 检查Python环境..."

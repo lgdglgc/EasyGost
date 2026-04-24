@@ -5,6 +5,11 @@
 RAW_CONF="/etc/gost/rawconf"
 GOST_CONF="/etc/gost/config.json"
 HTML_FILE="/opt/gost-web/index.html"
+TOKEN_FILE="/tmp/gost-web-token"
+
+# Default credentials (change here if needed)
+ADMIN_USER="admin"
+ADMIN_PASS="admin123456"
 
 # Ensure standard tools are found regardless of environment PATH
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH
@@ -22,8 +27,40 @@ send_response() {
     sync 2>/dev/null || true
 }
 
-json_ok()  { send_response "200 OK"    "application/json" "$1"; }
-json_err() { send_response "500 Error" "application/json" "{\"success\":false,\"error\":\"$1\"}"; }
+json_ok()   { send_response "200 OK"    "application/json" "$1"; }
+json_err()  { send_response "500 Error" "application/json" "{\"success\":false,\"error\":\"$1\"}"; }
+json_401()  { send_response "401 Unauthorized" "application/json" '{"success":false,"error":"未授权"}'; }
+
+# ─── Auth Helpers ────────────────────────────────────────────────────────────
+
+generate_token() {
+    # Generate a random 32-char hex token
+    cat /proc/sys/kernel/random/uuid 2>/dev/null | tr -d '-' || \
+    dd if=/dev/urandom bs=16 count=1 2>/dev/null | xxd -p | tr -d '\n'
+}
+
+api_login() {
+    local body="$1"
+    local user pass
+    user=$(printf '%s' "$body" | grep -o '"username":"[^"]*"' | head -1 | cut -d'"' -f4)
+    pass=$(printf '%s' "$body" | grep -o '"password":"[^"]*"' | head -1 | cut -d'"' -f4)
+    if [[ "$user" == "$ADMIN_USER" && "$pass" == "$ADMIN_PASS" ]]; then
+        local token; token=$(generate_token)
+        printf '%s' "$token" > "$TOKEN_FILE"
+        json_ok "{\"success\":true,\"token\":\"$token\"}"
+    else
+        send_response "401 Unauthorized" "application/json" '{"success":false,"error":"账号或密码错误"}'
+    fi
+}
+
+check_auth() {
+    # Returns 0 if token is valid, 1 otherwise
+    local token="$1"
+    [[ -z "$token" ]] && return 1
+    [[ -f "$TOKEN_FILE" ]] || return 1
+    local stored; stored=$(cat "$TOKEN_FILE" 2>/dev/null)
+    [[ "$token" == "$stored" ]] && return 0 || return 1
+}
 
 # ─── Config Generator (ported from original gost.sh) ────────────────────────
 
@@ -207,11 +244,15 @@ path=$(awk '{print $2}' <<< "$req_line")
 
 # Read headers
 content_length=0
+auth_token=""
 while IFS= read -r hdr; do
     hdr="${hdr%$'\r'}"
     [[ -z "$hdr" ]] && break
     if [[ "$hdr" =~ ^[Cc]ontent-[Ll]ength:[[:space:]]*([0-9]+) ]]; then
         content_length="${BASH_REMATCH[1]}"
+    fi
+    if [[ "$hdr" =~ ^[Xx]-[Aa]uth-[Tt]oken:[[:space:]]*(.+) ]]; then
+        auth_token="${BASH_REMATCH[1]}"
     fi
 done
 
@@ -229,11 +270,17 @@ fi
 
 # Route
 case "$method:$path" in
-    GET:/)                    serve_html ;;
-    GET:/api/rules)           api_get_rules ;;
-    POST:/api/rules)          api_add_rule "$body" ;;
-    DELETE:/api/rules/*)      api_delete_rule "${path##*/}" ;;
-    GET:/api/status)          api_get_status ;;
-    POST:/api/restart)        api_restart ;;
-    *)                        send_response "404 Not Found" "text/plain" "Not Found" ;;
+    GET:/)               serve_html ;;
+    POST:/api/login)     api_login "$body" ;;
+    GET:/api/rules)
+        check_auth "$auth_token" && api_get_rules || json_401 ;;
+    POST:/api/rules)
+        check_auth "$auth_token" && api_add_rule "$body" || json_401 ;;
+    DELETE:/api/rules/*)
+        check_auth "$auth_token" && api_delete_rule "${path##*/}" || json_401 ;;
+    GET:/api/status)
+        check_auth "$auth_token" && api_get_status || json_401 ;;
+    POST:/api/restart)
+        check_auth "$auth_token" && api_restart || json_401 ;;
+    *)   send_response "404 Not Found" "text/plain" "Not Found" ;;
 esac

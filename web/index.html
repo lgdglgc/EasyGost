@@ -15,7 +15,61 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
 
-  /* Header */
+  /* ── Login Page ── */
+  #loginPage {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 60% 20%, rgba(108,142,245,.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 80%, rgba(167,139,250,.10) 0%, transparent 55%),
+                var(--bg);
+  }
+  .login-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 2.5rem 2.2rem; width: 100%; max-width: 400px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    animation: fadeIn .4s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+  .login-logo {
+    display: flex; align-items: center; gap: .85rem; margin-bottom: 2rem;
+  }
+  .login-logo-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+    box-shadow: 0 6px 20px rgba(108,142,245,.35);
+  }
+  .login-logo-text h2 { font-size: 1.15rem; font-weight: 700; }
+  .login-logo-text p  { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+  .login-title { font-size: .9rem; font-weight: 600; color: var(--muted); margin-bottom: 1.5rem; letter-spacing:.03em; }
+  .form-group { margin-bottom: 1.1rem; }
+  .form-label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .4rem; font-weight: 500; }
+  .form-control {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: .65rem .9rem; font-size: .9rem; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,142,245,.15); }
+  .login-btn {
+    width: 100%; padding: .75rem; border: none; border-radius: 9px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: .95rem; font-weight: 600; margin-top: .5rem;
+    transition: opacity .2s, transform .1s, box-shadow .2s;
+    box-shadow: 0 4px 18px rgba(108,142,245,.35);
+  }
+  .login-btn:hover { opacity: .9; box-shadow: 0 6px 22px rgba(108,142,245,.45); }
+  .login-btn:active { transform: scale(.98); }
+  .login-btn:disabled { opacity:.55; cursor:not-allowed; }
+  .login-err {
+    background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3);
+    border-radius: 8px; padding: .6rem .9rem; font-size: .83rem; color: var(--danger);
+    margin-top: 1rem; display: none;
+  }
+  .login-err.show { display: block; }
+
+  /* ── Main App ── */
+  #appPage { display: none; }
+
   .header {
     background: linear-gradient(135deg, #1a1d27 0%, #161927 100%);
     border-bottom: 1px solid var(--border);
@@ -31,6 +85,7 @@
   .logo-text h1 { font-size: 1.1rem; font-weight: 700; }
   .logo-text p  { font-size: .75rem; color: var(--muted); }
 
+  .header-right { display: flex; align-items: center; gap: 1rem; }
   .status-badge {
     display: flex; align-items: center; gap: .5rem;
     background: var(--card); border: 1px solid var(--border);
@@ -40,10 +95,17 @@
   .dot.running { background: var(--success); box-shadow: 0 0 8px var(--success); }
   .dot.stopped { background: var(--danger); }
 
-  /* Main */
+  .logout-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .38rem .9rem; border-radius: 20px; font-size: .82rem; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    transition: border-color .2s, color .2s;
+  }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
   .main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
 
-  /* Stats row */
   .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 2rem; }
   .stat-card {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -55,13 +117,11 @@
   .stat-value.success { color: var(--success); }
   .stat-value.warn    { color: var(--warn); }
 
-  /* Section */
   .section-header {
     display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
   }
   .section-title { font-size: 1rem; font-weight: 600; }
 
-  /* Buttons */
   .btn {
     display: inline-flex; align-items: center; gap: .4rem;
     padding: .5rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
@@ -75,7 +135,6 @@
   .btn-ghost    { background: var(--card); border: 1px solid var(--border); color: var(--text); }
   .btn-sm { padding: .3rem .75rem; font-size: .78rem; }
 
-  /* Table */
   .table-wrap {
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
   }
@@ -91,10 +150,8 @@
     background: rgba(108,142,245,.15); color: var(--accent); border: 1px solid rgba(108,142,245,.25);
   }
   .port-code { font-family: monospace; font-size: .9rem; color: var(--accent2); }
-
   .empty-row td { text-align: center; color: var(--muted); padding: 3rem; }
 
-  /* Modal */
   .modal-overlay {
     display: none; position: fixed; inset: 0;
     background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
@@ -108,18 +165,9 @@
   }
   @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 1.4rem; }
-
-  .form-group { margin-bottom: 1rem; }
-  .form-label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .4rem; font-weight: 500; }
-  .form-control {
-    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-    color: var(--text); padding: .6rem .85rem; font-size: .88rem; outline: none; transition: border-color .2s;
-  }
-  .form-control:focus { border-color: var(--accent); }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
   .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
 
-  /* Toast */
   .toast {
     position: fixed; bottom: 2rem; right: 2rem; z-index: 200;
     background: var(--card); border: 1px solid var(--border); border-radius: 10px;
@@ -136,68 +184,90 @@
     .form-row { grid-template-columns: 1fr; }
     table { font-size: .8rem; }
     th, td { padding: .6rem .6rem; }
+    .header { padding: .75rem 1rem; }
   }
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">⚡</div>
-    <div class="logo-text">
-      <h1>GOST 转发管理</h1>
-      <p>Multi-EasyGost Web Panel</p>
+<!-- ══ Login Page ══ -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">⚡</div>
+      <div class="login-logo-text">
+        <h2>GOST 转发管理</h2>
+        <p>Multi-EasyGost Web Panel</p>
+      </div>
     </div>
+    <div class="login-title">请登录以继续</div>
+    <div class="form-group">
+      <label class="form-label" for="loginUser">账号</label>
+      <input class="form-control" id="loginUser" type="text" placeholder="请输入账号" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="loginPass">密码</label>
+      <input class="form-control" id="loginPass" type="password" placeholder="请输入密码" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">登 录</button>
+    <div class="login-err" id="loginErr">账号或密码错误，请重试</div>
   </div>
-  <div class="status-badge">
-    <span class="dot" id="statusDot"></span>
-    <span id="statusText">检查中...</span>
-  </div>
-</header>
+</div>
 
-<!-- Main -->
-<main class="main">
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat-card">
-      <div class="stat-label">活跃规则</div>
-      <div class="stat-value accent" id="ruleCount">—</div>
+<!-- ══ Main App ══ -->
+<div id="appPage">
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">
+        <h1>GOST 转发管理</h1>
+        <p>Multi-EasyGost Web Panel</p>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">GOST 状态</div>
-      <div class="stat-value success" id="gostStatus">检查中</div>
+    <div class="header-right">
+      <div class="status-badge">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">检查中...</span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">⏻ 退出登录</button>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">配置文件</div>
-      <div class="stat-value warn">/etc/gost/rawconf</div>
-    </div>
-  </div>
+  </header>
 
-  <!-- Rules Table -->
-  <div class="section-header">
-    <span class="section-title">转发规则列表</span>
-    <button class="btn btn-primary" onclick="openModal()">＋ 添加规则</button>
-  </div>
+  <main class="main">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">活跃规则</div>
+        <div class="stat-value accent" id="ruleCount">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">GOST 状态</div>
+        <div class="stat-value success" id="gostStatus">检查中</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">配置文件</div>
+        <div class="stat-value warn">/etc/gost/rawconf</div>
+      </div>
+    </div>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>类型</th>
-          <th>本地端口</th>
-          <th>目标地址</th>
-          <th>目标端口</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody id="rulesBody">
-        <tr class="empty-row"><td colspan="6">加载中...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</main>
+    <div class="section-header">
+      <span class="section-title">转发规则列表</span>
+      <button class="btn btn-primary" onclick="openModal()">＋ 添加规则</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>类型</th><th>本地端口</th><th>目标地址</th><th>目标端口</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="rulesBody">
+          <tr class="empty-row"><td colspan="6">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
 
 <!-- Add Rule Modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
@@ -265,6 +335,68 @@
 const API = '';
 let rules = [];
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const TOKEN_KEY = 'gost_token';
+
+function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
+
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn  = document.getElementById('loginBtn');
+  const err  = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if (!user || !pass) { err.textContent = '账号和密码不能为空'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = '登录中...';
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+    const d = await r.json();
+    if (d.success && d.token) {
+      setToken(d.token);
+      showApp();
+    } else {
+      err.textContent = '账号或密码错误，请重试';
+      err.classList.add('show');
+    }
+  } catch(e) {
+    err.textContent = '连接服务器失败，请稍后重试';
+    err.classList.add('show');
+  }
+  btn.disabled = false; btn.textContent = '登 录';
+}
+
+function doLogout() {
+  clearToken();
+  showLogin();
+}
+
+function showLogin() {
+  document.getElementById('appPage').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').classList.remove('show');
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'block';
+  loadRules();
+  loadStatus();
+}
+
+// Enter key to login
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginPage').style.display !== 'none') doLogin();
+});
+
+// ── API helpers ───────────────────────────────────────────────────────────────
 const TYPE_NAMES = {
   nonencrypt:'不加密中转', encrypttls:'加密TLS', encryptws:'加密WS', encryptwss:'加密WSS',
   decrypttls:'解密TLS', decryptws:'解密WS', decryptwss:'解密WSS',
@@ -273,16 +405,15 @@ const TYPE_NAMES = {
   cdnno:'CDN-无加密', cdnws:'CDN-WS', cdnwss:'CDN-WSS'
 };
 
-// fetch with 8s timeout to prevent hanging forever
 async function fetchJSON(url, opts={}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(url, {
-      headers: {'Content-Type':'application/json'},
-      signal: ctrl.signal,
-      ...opts
-    });
+    const headers = { 'Content-Type': 'application/json' };
+    const token = getToken();
+    if (token) headers['X-Auth-Token'] = token;
+    const r = await fetch(url, { headers, signal: ctrl.signal, ...opts });
+    if (r.status === 401) { doLogout(); throw new Error('Unauthorized'); }
     return r.json();
   } finally {
     clearTimeout(timer);
@@ -303,6 +434,7 @@ async function loadStatus() {
       txt.textContent = '已停止'; gs.textContent = '已停止'; gs.style.color = 'var(--danger)';
     }
   } catch(e) {
+    if (e.message === 'Unauthorized') return;
     dot.className = 'dot stopped';
     txt.textContent = '连接失败'; gs.textContent = '连接失败'; gs.style.color = 'var(--muted)';
   }
@@ -315,6 +447,7 @@ async function loadRules() {
     document.getElementById('ruleCount').textContent = rules.length;
     renderRules();
   } catch(e) {
+    if (e.message === 'Unauthorized') return;
     document.getElementById('rulesBody').innerHTML =
       '<tr class="empty-row"><td colspan="6">加载失败，请刷新页面</td></tr>';
   }
@@ -345,17 +478,15 @@ async function deleteRule(id) {
     const d = await fetchJSON(`/api/rules/${id}`, { method:'DELETE' });
     if (d.success) { toast('✓ 规则已删除，GOST已重启', 'ok'); loadRules(); loadStatus(); }
     else toast('删除失败: ' + d.error, 'err');
-  } catch(e) { toast('网络错误', 'err'); }
+  } catch(e) { if (e.message !== 'Unauthorized') toast('网络错误', 'err'); }
 }
 
 async function submitRule() {
-  const type     = document.getElementById('fType').value;
-  const lp       = document.getElementById('fLocalPort').value.trim();
-  const dip      = document.getElementById('fDestIP').value.trim();
-  const dp       = document.getElementById('fDestPort').value.trim();
-
+  const type = document.getElementById('fType').value;
+  const lp   = document.getElementById('fLocalPort').value.trim();
+  const dip  = document.getElementById('fDestIP').value.trim();
+  const dp   = document.getElementById('fDestPort').value.trim();
   if (!lp || !dp) { toast('本地端口和目标端口不能为空', 'err'); return; }
-
   try {
     const d = await fetchJSON('/api/rules', {
       method: 'POST',
@@ -365,7 +496,7 @@ async function submitRule() {
       toast('✓ 规则已添加，GOST已重启', 'ok');
       closeModal(); loadRules(); loadStatus();
     } else toast('添加失败: ' + d.error, 'err');
-  } catch(e) { toast('网络错误', 'err'); }
+  } catch(e) { if (e.message !== 'Unauthorized') toast('网络错误', 'err'); }
 }
 
 function openModal() {
@@ -387,10 +518,13 @@ function toast(msg, type='ok') {
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// Init
-loadRules();
-loadStatus();
-setInterval(loadStatus, 8000);
+// ── Init ──────────────────────────────────────────────────────────────────────
+if (getToken()) {
+  showApp();
+  setInterval(loadStatus, 8000);
+} else {
+  showLogin();
+}
 </script>
 </body>
 </html>

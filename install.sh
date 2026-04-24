@@ -201,6 +201,11 @@ curl -fsSL "${GITHUB_URL}/web/index.html" -o "$APP_DIR/web/index.html"
 curl -fsSL "${GITHUB_URL}/web/static/app.js" -o "$APP_DIR/web/static/app.js"
 curl -fsSL "${GITHUB_URL}/web/static/style.css" -o "$APP_DIR/web/static/style.css"
 
+# 修改Flask绑定地址为0.0.0.0以支持远程访问
+echo -e "${Info} 配置Flask绑定地址..."
+sed -i "s/host='127.0.0.1'/host='0.0.0.0'/g" "$APP_DIR/gost-web-manager.py"
+sed -i "s/host=\"127.0.0.1\"/host=\"0.0.0.0\"/g" "$APP_DIR/gost-web-manager.py"
+
 # 设置权限
 chmod 755 "$APP_DIR"
 chmod 644 "$APP_DIR"/*.py

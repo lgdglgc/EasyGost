@@ -1,0 +1,13 @@
+[Unit]
+Description=GOST Web Management Panel (socat/bash)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/socat TCP-LISTEN:8888,fork,reuseaddr EXEC:/opt/gost-web/gost-web.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

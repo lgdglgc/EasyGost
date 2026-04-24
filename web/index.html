@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GOST 转发管理</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3e;
+    --accent: #6c8ef5; --accent2: #a78bfa;
+    --success: #34d399; --danger: #f87171; --warn: #fbbf24;
+    --text: #e2e8f0; --muted: #64748b;
+    --radius: 10px; --font: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #161927 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: .75rem; }
+  .logo-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+  }
+  .logo-text h1 { font-size: 1.1rem; font-weight: 700; }
+  .logo-text p  { font-size: .75rem; color: var(--muted); }
+
+  .status-badge {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: .4rem 1rem; font-size: .82rem;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background .3s; }
+  .dot.running { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .dot.stopped { background: var(--danger); }
+
+  /* Main */
+  .main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Stats row */
+  .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.2rem 1.5rem;
+  }
+  .stat-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .stat-value { font-size: 1.8rem; font-weight: 700; margin-top: .25rem; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.success { color: var(--success); }
+  .stat-value.warn    { color: var(--warn); }
+
+  /* Section */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+  }
+  .section-title { font-size: 1rem; font-weight: 600; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .5rem 1.1rem; border-radius: 8px; font-size: .85rem; font-weight: 500;
+    cursor: pointer; border: none; transition: opacity .2s, transform .1s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary  { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .btn-success  { background: var(--success); color: #0f1117; }
+  .btn-danger   { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+  .btn-ghost    { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+  .btn-sm { padding: .3rem .75rem; font-size: .78rem; }
+
+  /* Table */
+  .table-wrap {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: rgba(108,142,245,.08); }
+  th { padding: .8rem 1rem; text-align: left; font-size: .75rem; color: var(--muted);
+       text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  td { padding: .85rem 1rem; border-top: 1px solid var(--border); font-size: .88rem; vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .type-badge {
+    display: inline-block; padding: .22rem .65rem; border-radius: 6px; font-size: .75rem; font-weight: 600;
+    background: rgba(108,142,245,.15); color: var(--accent); border: 1px solid rgba(108,142,245,.25);
+  }
+  .port-code { font-family: monospace; font-size: .9rem; color: var(--accent2); }
+
+  .empty-row td { text-align: center; color: var(--muted); padding: 3rem; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.8rem; width: 100%; max-width: 480px;
+    animation: slideUp .2s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 1.4rem; }
+
+  .form-group { margin-bottom: 1rem; }
+  .form-label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .4rem; font-weight: 500; }
+  .form-control {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: .6rem .85rem; font-size: .88rem; outline: none; transition: border-color .2s;
+  }
+  .form-control:focus { border-color: var(--accent); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem; z-index: 200;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: .85rem 1.4rem; font-size: .88rem; max-width: 320px;
+    transform: translateY(20px); opacity: 0; transition: all .3s; pointer-events: none;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok   { border-color: var(--success); color: var(--success); }
+  .toast.err  { border-color: var(--danger);  color: var(--danger); }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    table { font-size: .8rem; }
+    th, td { padding: .6rem .6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div class="logo-text">
+      <h1>GOST 转发管理</h1>
+      <p>Multi-EasyGost Web Panel</p>
+    </div>
+  </div>
+  <div class="status-badge">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">检查中...</span>
+  </div>
+</header>
+
+<!-- Main -->
+<main class="main">
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">活跃规则</div>
+      <div class="stat-value accent" id="ruleCount">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">GOST 状态</div>
+      <div class="stat-value success" id="gostStatus">检查中</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">配置文件</div>
+      <div class="stat-value warn">/etc/gost/rawconf</div>
+    </div>
+  </div>
+
+  <!-- Rules Table -->
+  <div class="section-header">
+    <span class="section-title">转发规则列表</span>
+    <button class="btn btn-primary" onclick="openModal()">＋ 添加规则</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>类型</th>
+          <th>本地端口</th>
+          <th>目标地址</th>
+          <th>目标端口</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="rulesBody">
+        <tr class="empty-row"><td colspan="6">加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Add Rule Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">添加转发规则</div>
+    <div class="form-group">
+      <label class="form-label">转发类型</label>
+      <select class="form-control" id="fType">
+        <optgroup label="── 基础转发 ──">
+          <option value="nonencrypt">TCP+UDP 不加密转发</option>
+        </optgroup>
+        <optgroup label="── 加密隧道（中转机）──">
+          <option value="encrypttls">加密隧道 TLS</option>
+          <option value="encryptws">加密隧道 WS</option>
+          <option value="encryptwss">加密隧道 WSS</option>
+        </optgroup>
+        <optgroup label="── 解密对接（落地机）──">
+          <option value="decrypttls">解密 TLS</option>
+          <option value="decryptws">解密 WS</option>
+          <option value="decryptwss">解密 WSS</option>
+        </optgroup>
+        <optgroup label="── 代理 ──">
+          <option value="ss">Shadowsocks</option>
+          <option value="socks">SOCKS5</option>
+          <option value="http">HTTP</option>
+        </optgroup>
+        <optgroup label="── 均衡负载 ──">
+          <option value="peerno">均衡负载 不加密</option>
+          <option value="peertls">均衡负载 TLS</option>
+          <option value="peerws">均衡负载 WS</option>
+          <option value="peerwss">均衡负载 WSS</option>
+        </optgroup>
+        <optgroup label="── CDN 转发 ──">
+          <option value="cdnno">CDN 不加密</option>
+          <option value="cdnws">CDN WS</option>
+          <option value="cdnwss">CDN WSS</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">本地端口</label>
+        <input class="form-control" id="fLocalPort" type="text" placeholder="如 10000" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">目标端口</label>
+        <input class="form-control" id="fDestPort" type="text" placeholder="如 443" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">目标 IP / 域名</label>
+      <input class="form-control" id="fDestIP" type="text" placeholder="如 1.2.3.4 或 example.com" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-success" onclick="submitRule()">✓ 保存并应用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let rules = [];
+
+const TYPE_NAMES = {
+  nonencrypt:'不加密中转', encrypttls:'加密TLS', encryptws:'加密WS', encryptwss:'加密WSS',
+  decrypttls:'解密TLS', decryptws:'解密WS', decryptwss:'解密WSS',
+  ss:'Shadowsocks', socks:'SOCKS5', http:'HTTP',
+  peerno:'均衡-无加密', peertls:'均衡-TLS', peerws:'均衡-WS', peerwss:'均衡-WSS',
+  cdnno:'CDN-无加密', cdnws:'CDN-WS', cdnwss:'CDN-WSS'
+};
+
+async function fetchJSON(url, opts={}) {
+  const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts });
+  return r.json();
+}
+
+async function loadStatus() {
+  try {
+    const d = await fetchJSON('/api/status');
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    const gs  = document.getElementById('gostStatus');
+    if (d.is_running) {
+      dot.className = 'dot running';
+      txt.textContent = '运行中'; gs.textContent = '运行中'; gs.style.color = 'var(--success)';
+    } else {
+      dot.className = 'dot stopped';
+      txt.textContent = '已停止'; gs.textContent = '已停止'; gs.style.color = 'var(--danger)';
+    }
+  } catch(e) {
+    document.getElementById('statusText').textContent = '连接失败';
+  }
+}
+
+async function loadRules() {
+  try {
+    const d = await fetchJSON('/api/rules');
+    rules = d.data || [];
+    document.getElementById('ruleCount').textContent = rules.length;
+    renderRules();
+  } catch(e) {
+    document.getElementById('rulesBody').innerHTML =
+      '<tr class="empty-row"><td colspan="6">加载失败，请刷新页面</td></tr>';
+  }
+}
+
+function renderRules() {
+  const tbody = document.getElementById('rulesBody');
+  if (!rules.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">暂无规则，点击右上角「添加规则」开始</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rules.map(r => `
+    <tr>
+      <td><span style="color:var(--muted)">${r.id}</span></td>
+      <td><span class="type-badge">${TYPE_NAMES[r.type] || r.type}</span></td>
+      <td><span class="port-code">${r.local_port}</span></td>
+      <td>${r.dest_ip || '<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="port-code">${r.dest_port}</span></td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="deleteRule(${r.id})">🗑 删除</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function deleteRule(id) {
+  if (!confirm(`确定删除第 ${id} 条规则？删除后将立即重启 GOST`)) return;
+  try {
+    const d = await fetchJSON(`/api/rules/${id}`, { method:'DELETE' });
+    if (d.success) { toast('✓ 规则已删除，GOST已重启', 'ok'); loadRules(); loadStatus(); }
+    else toast('删除失败: ' + d.error, 'err');
+  } catch(e) { toast('网络错误', 'err'); }
+}
+
+async function submitRule() {
+  const type     = document.getElementById('fType').value;
+  const lp       = document.getElementById('fLocalPort').value.trim();
+  const dip      = document.getElementById('fDestIP').value.trim();
+  const dp       = document.getElementById('fDestPort').value.trim();
+
+  if (!lp || !dp) { toast('本地端口和目标端口不能为空', 'err'); return; }
+
+  try {
+    const d = await fetchJSON('/api/rules', {
+      method: 'POST',
+      body: JSON.stringify({ type, local_port:lp, dest_ip:dip, dest_port:dp })
+    });
+    if (d.success) {
+      toast('✓ 规则已添加，GOST已重启', 'ok');
+      closeModal(); loadRules(); loadStatus();
+    } else toast('添加失败: ' + d.error, 'err');
+  } catch(e) { toast('网络错误', 'err'); }
+}
+
+function openModal() {
+  document.getElementById('fLocalPort').value = '';
+  document.getElementById('fDestIP').value = '';
+  document.getElementById('fDestPort').value = '';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('show');
+}
+
+let toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Init
+loadRules();
+loadStatus();
+setInterval(loadStatus, 8000);
+</script>
+</body>
+</html>

@@ -273,17 +273,28 @@ const TYPE_NAMES = {
   cdnno:'CDN-无加密', cdnws:'CDN-WS', cdnwss:'CDN-WSS'
 };
 
+// fetch with 8s timeout to prevent hanging forever
 async function fetchJSON(url, opts={}) {
-  const r = await fetch(url, { headers:{'Content-Type':'application/json'}, ...opts });
-  return r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(url, {
+      headers: {'Content-Type':'application/json'},
+      signal: ctrl.signal,
+      ...opts
+    });
+    return r.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function loadStatus() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const gs  = document.getElementById('gostStatus');
   try {
     const d = await fetchJSON('/api/status');
-    const dot = document.getElementById('statusDot');
-    const txt = document.getElementById('statusText');
-    const gs  = document.getElementById('gostStatus');
     if (d.is_running) {
       dot.className = 'dot running';
       txt.textContent = '运行中'; gs.textContent = '运行中'; gs.style.color = 'var(--success)';
@@ -292,7 +303,8 @@ async function loadStatus() {
       txt.textContent = '已停止'; gs.textContent = '已停止'; gs.style.color = 'var(--danger)';
     }
   } catch(e) {
-    document.getElementById('statusText').textContent = '连接失败';
+    dot.className = 'dot stopped';
+    txt.textContent = '连接失败'; gs.textContent = '连接失败'; gs.style.color = 'var(--muted)';
   }
 }
 

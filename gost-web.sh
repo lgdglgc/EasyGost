@@ -6,13 +6,20 @@ RAW_CONF="/etc/gost/rawconf"
 GOST_CONF="/etc/gost/config.json"
 HTML_FILE="/opt/gost-web/index.html"
 
+# Ensure standard tools are found regardless of environment PATH
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin:$PATH
+
 # ─── HTTP helpers ───────────────────────────────────────────────────────────
 
 send_response() {
     local status="$1" ctype="$2" body="$3"
-    local len=${#body}
-    printf "HTTP/1.0 %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n%s" \
+    # Use byte length (LC_ALL=C ensures ${#} counts bytes not chars)
+    local len; len=$(LC_ALL=C printf '%s' "$body" | wc -c | tr -d ' ')
+    # HTTP/1.0 + Connection: close ensures socat child exits cleanly
+    printf 'HTTP/1.0 %s\r\nContent-Type: %s\r\nContent-Length: %s\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n%s' \
         "$status" "$ctype" "$len" "$body"
+    # Flush stdout so socat sends all data before script exits
+    sync 2>/dev/null || true
 }
 
 json_ok()  { send_response "200 OK"    "application/json" "$1"; }

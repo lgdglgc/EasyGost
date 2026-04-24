@@ -136,17 +136,62 @@ echo -e "${Info} Python版本: $(python3 --version)"
 # ============ 安装EasyGost Web管理面板 ============
 echo -e "\n${Warn} 安装EasyGost Web管理面板..."
 
-# 安装依赖 - 使用python3 -m pip确保兼容性
+# 尝试安装Flask依赖 - 使用多种方式
 echo -e "${Info} 安装Python依赖 (Flask, Flask-CORS)..."
-python3 -m pip install --upgrade pip -q > /dev/null 2>&1 || true
-python3 -m pip install flask flask-cors -q --no-cache-dir || {
-    echo -e "${Error} Flask安装失败"
-    echo "请手动安装依赖:"
-    echo "  python3 -m pip install flask flask-cors"
-    exit 1
-}
 
-echo -e "${Info} 依赖安装完成"
+FLASK_INSTALLED=0
+
+# 方式1：尝试使用python3 -m pip
+if python3 -m pip install flask flask-cors -q --no-cache-dir 2>/dev/null; then
+    echo -e "${Info} 通过pip安装成功"
+    FLASK_INSTALLED=1
+fi
+
+# 方式2：如果pip失败，尝试系统包管理器
+if [ $FLASK_INSTALLED -eq 0 ]; then
+    echo -e "${Warn} pip安装失败，尝试系统包管理器..."
+    
+    # 检测系统类型
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    fi
+    
+    case "$OS" in
+        ubuntu|debian)
+            echo -e "${Info} 使用apt安装Flask..."
+            apt update > /dev/null 2>&1 || true
+            apt install -y python3-flask python3-flask-cors > /dev/null 2>&1 && FLASK_INSTALLED=1 || true
+            ;;
+        centos|rhel|fedora)
+            echo -e "${Info} 使用yum安装Flask..."
+            yum install -y python3-flask python3-flask-cors > /dev/null 2>&1 && FLASK_INSTALLED=1 || true
+            ;;
+    esac
+fi
+
+# 方式3：如果还是失败，提示用户手动安装
+if [ $FLASK_INSTALLED -eq 0 ]; then
+    echo -e "${Warn} 自动安装Flask失败"
+    echo -e "${Info} 请手动执行以下命令安装依赖:"
+    echo ""
+    echo "  Ubuntu/Debian:"
+    echo "    sudo apt install -y python3-flask python3-flask-cors"
+    echo ""
+    echo "  CentOS/RHEL:"
+    echo "    sudo yum install -y python3-flask python3-flask-cors"
+    echo ""
+    echo "  或使用pip:"
+    echo "    sudo python3 -m pip install flask flask-cors"
+    echo ""
+    read -p "已安装Flask? (y/n): " flask_confirm
+    if [[ "$flask_confirm" != "y" && "$flask_confirm" != "Y" ]]; then
+        echo -e "${Error} Flask安装失败，无法继续"
+        exit 1
+    fi
+else
+    echo -e "${Info} 依赖安装完成"
+fi
 
 # 创建应用目录
 APP_DIR="/opt/gost-web-manager"

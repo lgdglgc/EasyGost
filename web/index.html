@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOST Web 管理面板</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 欢迎覆盖层 -->
+        <div class="welcome-overlay" id="welcomeOverlay">
+            <div class="welcome-container">
+                <div class="welcome-header">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <h1>欢迎使用 GOST 管理面板</h1>
+                <p>现代化的 GOST 隧道管理工具</p>
+                <div class="welcome-spinner">
+                    <div class="spinner-border"></div>
+                    <p>初始化中...</p>
+                </div>
+                <div class="welcome-info">
+                    <div class="info-item">
+                        <i class="bi bi-check-circle-fill"></i>
+                        <span>Web服务已启动</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="bi bi-hourglass-split"></i>
+                        <span>正在连接GOST...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 头部导航 -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <i class="bi bi-speedometer2"></i>
+                <span>GOST 管理面板</span>
+            </div>
+            <div class="navbar-right">
+                <div class="status-badge" id="gostStatus">
+                    <span class="status-dot"></span>
+                    <span id="statusText">检查中...</span>
+                </div>
+                <button class="btn btn-sm btn-outline" id="refreshBtn" onclick="refreshStatus()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <!-- 侧边栏 -->
+            <aside class="sidebar">
+                <nav class="nav-menu">
+                    <div class="nav-item active" onclick="switchTab('dashboard')">
+                        <i class="bi bi-house-fill"></i>
+                        <span>仪表板</span>
+                    </div>
+                    <div class="nav-item" onclick="switchTab('rules')">
+                        <i class="bi bi-list-check"></i>
+                        <span>规则管理</span>
+                    </div>
+                    <div class="nav-item" onclick="switchTab('config')">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>配置预览</span>
+                    </div>
+                    <div class="nav-item" onclick="switchTab('help')">
+                        <i class="bi bi-question-circle"></i>
+                        <span>帮助文档</span>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区 -->
+            <main class="content">
+                <!-- 仪表板标签页 -->
+                <div class="tab-content active" id="dashboard">
+                    <div class="section-header">
+                        <h2>仪表板</h2>
+                        <p>GOST 服务管理和状态监控</p>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- 服务状态卡 -->
+                        <div class="card">
+                            <div class="card-header">服务状态</div>
+                            <div class="card-body">
+                                <div class="status-display" id="serviceStatus">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                </div>
+                                <div class="action-group">
+                                    <button class="btn btn-primary" id="startBtn" onclick="startGost()">
+                                        <i class="bi bi-play-fill"></i> 启动
+                                    </button>
+                                    <button class="btn btn-danger" id="stopBtn" onclick="stopGost()">
+                                        <i class="bi bi-stop-fill"></i> 停止
+                                    </button>
+                                    <button class="btn btn-secondary" id="restartBtn" onclick="restartGost()">
+                                        <i class="bi bi-arrow-repeat"></i> 重启
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 快速统计 -->
+                        <div class="card">
+                            <div class="card-header">规则统计</div>
+                            <div class="card-body">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="ruleCount">0</div>
+                                    <div class="stat-label">活跃规则</div>
+                                </div>
+                                <button class="btn btn-success btn-block" onclick="switchTab('rules')">
+                                    <i class="bi bi-plus-circle"></i> 添加规则
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近规则 -->
+                    <div class="card mt-4">
+                        <div class="card-header">最近规则</div>
+                        <div class="card-body">
+                            <div id="recentRules" class="rules-preview">
+                                <p class="text-muted">加载中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 规则管理标签页 -->
+                <div class="tab-content" id="rules">
+                    <div class="section-header">
+                        <h2>规则管理</h2>
+                        <button class="btn btn-primary" onclick="openAddRuleModal()">
+                            <i class="bi bi-plus-lg"></i> 新增规则
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="rulesTable" class="rules-container">
+                                <p class="text-center text-muted">加载中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配置预览标签页 -->
+                <div class="tab-content" id="config">
+                    <div class="section-header">
+                        <h2>配置预览</h2>
+                        <p>实时JSON配置生成和验证</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>生成的配置文件</span>
+                                <button class="btn btn-sm btn-secondary" onclick="copyConfig()">
+                                    <i class="bi bi-clipboard"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <pre id="configPreview"><code>{
+  "Debug": true,
+  "Retries": 0,
+  "ServeNodes": []
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 帮助文档标签页 -->
+                <div class="tab-content" id="help">
+                    <div class="section-header">
+                        <h2>帮助文档</h2>
+                    </div>
+
+                    <div class="help-content">
+                        <div class="card">
+                            <div class="card-header">规则类型说明</div>
+                            <div class="card-body">
+                                <div class="help-section">
+                                    <h4>转发类型</h4>
+                                    <dl>
+                                        <dt><strong>TCP+UDP转发</strong></dt>
+                                        <dd>不加密的直接转发，一般用于国内中转机</dd>
+                                        
+                                        <dt><strong>加密隧道 (TLS/WS/WSS)</strong></dt>
+                                        <dd>使用不同协议加密转发流量，保护隐私</dd>
+                                        
+                                        <dt><strong>解密转发</strong></dt>
+                                        <dd>接收加密的流量，解密后进行转发</dd>
+                                        
+                                        <dt><strong>代理服务</strong></dt>
+                                        <dd>支持 Shadowsocks、SOCKS5 和 HTTP 代理协议</dd>
+                                        
+                                        <dt><strong>均衡负载</strong></dt>
+                                        <dd>将流量分散到多个后端地址，支持多种负载均衡策略</dd>
+                                        
+                                        <dt><strong>CDN 转发</strong></dt>
+                                        <dd>转发到CDN自选节点IP</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">配置示例</div>
+                            <div class="card-body">
+                                <div class="example">
+                                    <h5>示例 1: 简单的TCP+UDP转发</h5>
+                                    <table class="example-table">
+                                        <tr>
+                                            <td><strong>类型:</strong></td>
+                                            <td>TCP+UDP转发</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>本地端口:</strong></td>
+                                            <td>8080</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>目标IP:</strong></td>
+                                            <td>192.168.1.1 或 example.com</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>目标端口:</strong></td>
+                                            <td>80</td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div class="example">
+                                    <h5>示例 2: 加密隧道转发</h5>
+                                    <p>用于在国内中转机上配置，需要在国外落地机配置对应的解密规则</p>
+                                    <table class="example-table">
+                                        <tr>
+                                            <td><strong>类型:</strong></td>
+                                            <td>加密隧道 (TLS)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>本地端口:</strong></td>
+                                            <td>8081</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>目标IP:</strong></td>
+                                            <td>香港服务器IP</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>目标端口:</strong></td>
+                                            <td>8081</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 添加规则模态框 -->
+    <div class="modal" id="ruleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加新规则</h3>
+                <button class="close-btn" onclick="closeRuleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="ruleForm">
+                    <div class="form-group">
+                        <label for="ruleType">规则类型 <span class="required">*</span></label>
+                        <select id="ruleType" required onchange="updateRuleTypeFields()">
+                            <option value="">-- 请选择 --</option>
+                        </select>
+                        <small id="typeDesc" class="form-text"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="localPort">本地端口 <span class="required">*</span></label>
+                        <input type="number" id="localPort" min="1" max="65535" required>
+                        <small class="form-text">GOST监听的本地端口</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destIP">目标IP/域名 <span class="required">*</span></label>
+                        <input type="text" id="destIP" placeholder="192.168.1.1 或 example.com" required>
+                        <small class="form-text">转发目标IP地址或域名</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destPort">目标端口 <span class="required">*</span></label>
+                        <input type="text" id="destPort" required>
+                        <small class="form-text">转发目标端口或策略名称</small>
+                    </div>
+
+                    <div id="advancedFields"></div>
+
+                    <div class="form-group">
+                        <label for="description">备注 (可选)</label>
+                        <textarea id="description" rows="2" placeholder="添加备注以便识别此规则"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeRuleModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">保存规则</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示框 -->
+    <div class="toast" id="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

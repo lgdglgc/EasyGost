@@ -30,16 +30,79 @@ if [[ $EUID != 0 ]]; then
     exit 1
 fi
 
-# 检查GOST是否安装
+# ============ GOST 检测和安装 ============
+echo -e "\n${Warn} 检查GOST是否已安装..."
+
 if ! command -v gost &> /dev/null; then
-    echo -e "${Error} 未检测到GOST，请先安装GOST"
-    echo "安装命令:"
-    echo "  CentOS/RHEL: sudo yum install gost"
-    echo "  Ubuntu/Debian: sudo apt install gost"
-    exit 1
+    echo -e "${Error} 未检测到GOST\n"
+    
+    # 询问用户是否安装GOST
+    read -p "$(echo -e ${Yellow_font_prefix})[?]$(echo -e ${Font_color_suffix}) 是否现在安装GOST? (y/n): " install_gost
+    
+    if [[ "$install_gost" != "y" && "$install_gost" != "Y" ]]; then
+        echo -e "${Error} 请先手动安装GOST后再运行此脚本"
+        echo ""
+        echo "安装GOST命令:"
+        echo -e "  ${Green_font_prefix}CentOS/RHEL:${Font_color_suffix}"
+        echo "    sudo yum install epel-release"
+        echo "    sudo yum install gost"
+        echo ""
+        echo -e "  ${Green_font_prefix}Ubuntu/Debian:${Font_color_suffix}"
+        echo "    sudo apt update"
+        echo "    sudo apt install gost"
+        echo ""
+        exit 1
+    fi
+    
+    echo -e "${Info} 开始安装GOST..."
+    
+    # 检测系统类型
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+    else
+        echo -e "${Error} 无法检测系统类型"
+        exit 1
+    fi
+    
+    # 根据系统安装GOST
+    case "$OS" in
+        centos|rhel|fedora)
+            echo -e "${Info} 检测到系统: CentOS/RHEL/Fedora"
+            yum install -y epel-release > /dev/null 2>&1 || true
+            yum install -y gost > /dev/null 2>&1
+            ;;
+        ubuntu|debian)
+            echo -e "${Info} 检测到系统: Ubuntu/Debian"
+            apt update > /dev/null 2>&1
+            apt install -y gost > /dev/null 2>&1
+            ;;
+        alpine)
+            echo -e "${Info} 检测到系统: Alpine Linux"
+            apk add --no-cache gost > /dev/null 2>&1
+            ;;
+        *)
+            echo -e "${Error} 不支持的系统: $OS"
+            echo "请手动安装GOST后再运行此脚本"
+            exit 1
+            ;;
+    esac
+    
+    # 验证安装
+    if command -v gost &> /dev/null; then
+        echo -e "${Info} GOST安装成功"
+    else
+        echo -e "${Error} GOST安装失败，请手动安装后重试"
+        exit 1
+    fi
+else
+    echo -e "${Info} 已检测到GOST"
 fi
 
-echo -e "${Info} 检测到GOST版本: $(gost -v | head -1)"
+echo -e "${Info} GOST版本: $(gost -v | head -1)"
+
+# ============ 检查Python环境 ============
+echo -e "\n${Warn} 检查Python环境..."
 
 # 检查Python
 if ! command -v python3 &> /dev/null; then
@@ -47,7 +110,10 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-echo -e "${Info} 检测到Python版本: $(python3 --version)"
+echo -e "${Info} Python版本: $(python3 --version)"
+
+# ============ 安装EasyGost Web管理面板 ============
+echo -e "\n${Warn} 安装EasyGost Web管理面板..."
 
 # 安装依赖
 echo -e "${Info} 安装Python依赖..."
@@ -138,19 +204,43 @@ if systemctl is-active --quiet gost-web-manager; then
     fi
     
     echo ""
-    echo -e "${Green_font_prefix}✓${Font_color_suffix} 服务已启动"
+    echo -e "${Green_font_prefix}✓${Font_color_suffix} GOST转发服务正在运行"
+    echo -e "${Green_font_prefix}✓${Font_color_suffix} EasyGost Web管理面板已启动"
     echo ""
-    echo "访问地址:"
-    echo "  http://${local_ip}:8888"
-    echo "  http://127.0.0.1:8888"
+    echo "════════════════════════════════════════════"
+    echo "📊 工作流程说明:"
+    echo "════════════════════════════════════════════"
     echo ""
-    echo "快速命令:"
+    echo "1️⃣  打开Web面板"
+    echo "   http://${local_ip}:8888"
+    echo ""
+    echo "2️⃣  在Web面板中:"
+    echo "   • 点击 [添加规则] 创建转发规则"
+    echo "   • 选择规则类型、配置端口和目标"
+    echo "   • 点击 [保存] 保存规则"
+    echo ""
+    echo "3️⃣  应用配置"
+    echo "   • Web面板会自动将规则写入 /etc/gost/rawconf"
+    echo "   • 点击 [应用配置] 重启GOST服务"
+    echo "   • GOST立即执行新的转发规则"
+    echo ""
+    echo "════════════════════════════════════════════"
+    echo "🔧 快速命令:"
+    echo "════════════════════════════════════════════"
+    echo ""
+    echo "  sudo gost-web start     - 启动Web面板"
+    echo "  sudo gost-web stop      - 停止Web面板"
+    echo "  sudo gost-web restart   - 重启Web面板"
     echo "  sudo gost-web status    - 查看状态"
-    echo "  sudo gost-web restart   - 重启服务"
     echo "  sudo gost-web logs      - 查看日志"
     echo ""
-    echo "项目地址:"
-    echo "  https://github.com/lgdglgc/EasyGost"
+    echo "════════════════════════════════════════════"
+    echo "📚 相关资源:"
+    echo "════════════════════════════════════════════"
+    echo ""
+    echo "  项目地址: https://github.com/lgdglgc/EasyGost"
+    echo "  GOST官方: https://docs.ginuerzh.xyz/gost/"
+    echo "  配置文件: /etc/gost/rawconf"
     echo ""
 else
     echo -e "${Error} 服务启动失败"

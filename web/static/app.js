@@ -101,7 +101,8 @@ async function refreshStatus() {
         const statusDot = document.querySelector('.status-dot');
         const serviceStatus = document.getElementById('serviceStatus');
         
-        const isRunning = data.data.is_running;
+        const isRunning = data.is_running;
+
         
         if (isRunning) {
             statusText.textContent = '正在运行';

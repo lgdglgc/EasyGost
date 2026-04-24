@@ -16,6 +16,7 @@
 - 📊 **实时状态** - 显示 GOST 服务状态和规则列表
 - 🎨 **现代设计** - 深色主题，响应式布局
 - 📱 **17 种规则类型** - 涵盖 TCP/UDP、TLS、WS、SS、SOCKS5 等
+- 🔐 **登录鉴权** - Web 面板带密码保护，防止未授权访问
 
 ## 🏗️ 系统架构
 
@@ -24,6 +25,7 @@
     └──▶ socat（TCP 监听，fork 处理并发）
               └──▶ gost-web.sh（Bash HTTP 处理器）
                         ├── GET  /               → 返回 index.html
+                        ├── POST /api/login      → 验证账密 → 返回 Token
                         ├── GET  /api/rules      → 读取 rawconf → JSON
                         ├── POST /api/rules      → 写入 rawconf → 重建配置 → 重启 gost
                         ├── DELETE /api/rules/N  → 删除第 N 行 → 重建配置 → 重启 gost
@@ -85,6 +87,32 @@ http://你的服务器IP:8888
 ```
 
 > ⚠️ **注意**：如果你使用了 Clash/V2ray 等代理软件，请将服务器 IP 加入直连规则，或关闭代理后再访问。
+
+## 🔐 登录账号
+
+首次访问 Web 面板时需要登录，默认账号密码如下：
+
+| 项目 | 默认值 |
+|------|--------|
+| **账号** | `admin` |
+| **密码** | `admin123456` |
+
+### 修改账号密码
+
+编辑 `/opt/gost-web/gost-web.sh`，修改文件顶部的以下两行：
+
+```bash
+ADMIN_USER="admin"        # 修改为你的账号
+ADMIN_PASS="admin123456"  # 修改为你的密码
+```
+
+保存后重启 Web 面板服务生效：
+
+```bash
+systemctl restart gost-web
+```
+
+> 💡 **说明**：登录 Token 存储于 `/tmp/gost-web-token`，重启服务器或面板后会自动刷新，需要重新登录。
 
 ## 🛠️ 常用命令
 

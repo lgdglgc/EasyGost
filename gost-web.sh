@@ -68,11 +68,18 @@ sync_iptables() {
     if ! command -v iptables >/dev/null 2>&1; then
         return
     fi
+    sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true
     iptables -t nat -N EASYGOST 2>/dev/null || true
     if ! iptables -t nat -C PREROUTING -j EASYGOST 2>/dev/null; then
         iptables -t nat -I PREROUTING 1 -j EASYGOST 2>/dev/null || true
     fi
     iptables -t nat -F EASYGOST 2>/dev/null || true
+    if ! iptables -t nat -C POSTROUTING -i vpns+ -j MASQUERADE 2>/dev/null; then
+        iptables -t nat -A POSTROUTING -i vpns+ -j MASQUERADE 2>/dev/null || true
+    fi
+    if ! iptables -t nat -C POSTROUTING -i tun+ -j MASQUERADE 2>/dev/null; then
+        iptables -t nat -A POSTROUTING -i tun+ -j MASQUERADE 2>/dev/null || true
+    fi
     if [[ -f "$RAW_CONF" ]]; then
         while IFS= read -r line; do
             [[ -z "$line" ]] && continue
@@ -81,6 +88,7 @@ sync_iptables() {
             local lp="${rest%%#*}"
             if [[ "$type" == "ocservsocks" ]]; then
                 iptables -t nat -A EASYGOST -i vpns+ -p tcp -j REDIRECT --to-ports "$lp" 2>/dev/null || true
+                iptables -t nat -A EASYGOST -i tun+ -p tcp -j REDIRECT --to-ports "$lp" 2>/dev/null || true
             fi
         done < "$RAW_CONF"
     fi

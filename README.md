@@ -112,6 +112,7 @@ systemctl restart gost-web
 | `ss` | Shadowsocks | 创建本地 Shadowsocks 代理服务 |
 | `socks` | SOCKS5 | 创建本地 SOCKS5 代理服务（带认证） |
 | `transitsocks` | SOCKS5落地中转 | **链式代理**：中转机监听并经由落地 SOCKS5 中继流量（支持账密） |
+| `ocservsocks` | ocserv VPN 劫持中转 | **透明代理**：通过 iptables 自动劫持 AnyConnect (ocserv) 流量并由 SOCKS5 转发 |
 | `http` | HTTP | 创建本地 HTTP 代理服务 |
 | `peerno` | 均衡-无加密 | 轮询转发流量至多个落地机节点 |
 | `peertls` | 均衡-TLS | 轮询加密转发至多个落地机节点 |

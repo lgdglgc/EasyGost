@@ -64,6 +64,28 @@ check_auth() {
 
 # ─── Config Generator (ported from original gost.sh) ────────────────────────
 
+sync_iptables() {
+    if ! command -v iptables >/dev/null 2>&1; then
+        return
+    fi
+    iptables -t nat -N EASYGOST 2>/dev/null || true
+    if ! iptables -t nat -C PREROUTING -j EASYGOST 2>/dev/null; then
+        iptables -t nat -I PREROUTING 1 -j EASYGOST 2>/dev/null || true
+    fi
+    iptables -t nat -F EASYGOST 2>/dev/null || true
+    if [[ -f "$RAW_CONF" ]]; then
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            local type="${line%%/*}"
+            local rest="${line#*/}"
+            local lp="${rest%%#*}"
+            if [[ "$type" == "ocservsocks" ]]; then
+                iptables -t nat -A EASYGOST -i vpns+ -p tcp -j REDIRECT --to-ports "$lp" 2>/dev/null || true
+            fi
+        done < "$RAW_CONF"
+    fi
+}
+
 generate_config() {
     rm -f "$GOST_CONF"
     local count_line
@@ -71,6 +93,7 @@ generate_config() {
 
     if [[ $count_line -eq 0 ]]; then
         printf '{\n    "Debug": true,\n    "Retries": 0,\n    "ServeNodes": [\n        "tcp://127.0.0.1:65532"\n    ]\n}\n' > "$GOST_CONF"
+        sync_iptables
         return
     fi
 
@@ -102,6 +125,7 @@ generate_config() {
     done < "$RAW_CONF"
 
     printf '    ]\n}\n' >> "$GOST_CONF"
+    sync_iptables
 }
 
 write_node() {
@@ -138,6 +162,9 @@ write_node() {
         socks) printf '%s"socks5://%s:%s@:%s"\n' "$pad" "$dip" "$sp" "$dp" ;;
         transitsocks)
             printf '%s"socks5://:%s"\n    ],\n    "ChainNodes": [\n        "socks5://%s:%s"\n' \
+                "$pad" "$sp" "$dip" "$dp" ;;
+        ocservsocks)
+            printf '%s"red://:%s"\n    ],\n    "ChainNodes": [\n        "socks5://%s:%s"\n' \
                 "$pad" "$sp" "$dip" "$dp" ;;
         http)  printf '%s"http://%s:%s@:%s"\n'   "$pad" "$dip" "$sp" "$dp" ;;
         peerno)

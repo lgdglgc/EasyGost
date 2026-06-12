@@ -136,6 +136,9 @@ write_node() {
             fi ;;
         ss)    printf '%s"ss://%s:%s@:%s"\n'     "$pad" "$dip" "$sp" "$dp" ;;
         socks) printf '%s"socks5://%s:%s@:%s"\n' "$pad" "$dip" "$sp" "$dp" ;;
+        transitsocks)
+            printf '%s"socks5://:%s"\n    ],\n    "ChainNodes": [\n        "socks5://%s:%s"\n' \
+                "$pad" "$sp" "$dip" "$dp" ;;
         http)  printf '%s"http://%s:%s@:%s"\n'   "$pad" "$dip" "$sp" "$dp" ;;
         peerno)
             printf '%s"tcp://:%s?ip=/root/%s.txt&strategy=%s",\n%s"udp://:%s?ip=/root/%s.txt&strategy=%s"\n' \

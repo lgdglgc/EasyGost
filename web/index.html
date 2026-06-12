@@ -321,7 +321,7 @@
     <div class="modal-title">添加转发规则</div>
     <div class="form-group">
       <label class="form-label">转发类型</label>
-      <select class="form-control" id="fType">
+      <select class="form-control" id="fType" onchange="toggleSocksAuth()">
         <optgroup label="── 基础转发 ──">
           <option value="nonencrypt">TCP+UDP 不加密转发</option>
         </optgroup>
@@ -338,6 +338,7 @@
         <optgroup label="── 代理 ──">
           <option value="ss">Shadowsocks</option>
           <option value="socks">SOCKS5</option>
+          <option value="transitsocks">SOCKS5 落地中转 (链式代理)</option>
           <option value="http">HTTP</option>
         </optgroup>
         <optgroup label="── 均衡负载 ──">
@@ -364,8 +365,18 @@
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">目标 IP / 域名</label>
+      <label class="form-label" for="fDestIP">目标 IP / 域名</label>
       <input class="form-control" id="fDestIP" type="text" placeholder="如 1.2.3.4 或 example.com" autocomplete="off">
+    </div>
+    <div class="form-row" id="socksAuthRow" style="display: none;">
+      <div class="form-group">
+        <label class="form-label">SOCKS 账号 (可选)</label>
+        <input class="form-control" id="fSocksUser" type="text" placeholder="留空则无" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">SOCKS 密码 (可选)</label>
+        <input class="form-control" id="fSocksPass" type="password" placeholder="留空则无" autocomplete="off">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
@@ -400,6 +411,7 @@
         <optgroup label="── 代理 ──">
           <option value="ss">Shadowsocks</option>
           <option value="socks">SOCKS5</option>
+          <option value="transitsocks">SOCKS5 落地中转 (链式代理)</option>
           <option value="http">HTTP</option>
         </optgroup>
         <optgroup label="── 均衡负载 ──">
@@ -508,7 +520,7 @@ document.addEventListener('keydown', e => {
 const TYPE_NAMES = {
   nonencrypt:'不加密中转', encrypttls:'加密TLS', encryptws:'加密WS', encryptwss:'加密WSS',
   decrypttls:'解密TLS', decryptws:'解密WS', decryptwss:'解密WSS',
-  ss:'Shadowsocks', socks:'SOCKS5', http:'HTTP',
+  ss:'Shadowsocks', socks:'SOCKS5', transitsocks:'SOCKS5落地中转', http:'HTTP',
   peerno:'均衡-无加密', peertls:'均衡-TLS', peerws:'均衡-WS', peerwss:'均衡-WSS',
   cdnno:'CDN-无加密', cdnws:'CDN-WS', cdnwss:'CDN-WSS'
 };
@@ -589,12 +601,36 @@ async function deleteRule(id) {
   } catch(e) { if (e.message !== 'Unauthorized') toast('网络错误', 'err'); }
 }
 
+function toggleSocksAuth() {
+  const type = document.getElementById('fType').value;
+  const authRow = document.getElementById('socksAuthRow');
+  const destIpLabel = document.querySelector('label[for="fDestIP"]');
+  if (type === 'transitsocks') {
+    authRow.style.display = 'grid';
+    if (destIpLabel) destIpLabel.textContent = 'SOCKS5 落地 IP / 域名';
+  } else {
+    authRow.style.display = 'none';
+    if (destIpLabel) destIpLabel.textContent = '目标 IP / 域名';
+  }
+}
+
 async function submitRule() {
   const type = document.getElementById('fType').value;
   const lp   = document.getElementById('fLocalPort').value.trim();
-  const dip  = document.getElementById('fDestIP').value.trim();
+  let dip    = document.getElementById('fDestIP').value.trim();
   const dp   = document.getElementById('fDestPort').value.trim();
   if (!lp || !dp) { toast('本地端口和目标端口不能为空', 'err'); return; }
+  
+  if (type === 'transitsocks') {
+    const user = document.getElementById('fSocksUser').value.trim();
+    const pass = document.getElementById('fSocksPass').value.trim();
+    if (user && pass) {
+      dip = `${user}:${pass}@${dip}`;
+    } else if (user) {
+      dip = `${user}@${dip}`;
+    }
+  }
+
   try {
     const d = await fetchJSON('/api/rules', {
       method: 'POST',
@@ -611,6 +647,10 @@ function openModal() {
   document.getElementById('fLocalPort').value = '';
   document.getElementById('fDestIP').value = '';
   document.getElementById('fDestPort').value = '';
+  document.getElementById('fSocksUser').value = '';
+  document.getElementById('fSocksPass').value = '';
+  document.getElementById('fType').value = 'nonencrypt';
+  toggleSocksAuth();
   document.getElementById('modalOverlay').classList.add('show');
 }
 function closeModal(e) {

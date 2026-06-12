@@ -6,28 +6,25 @@
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Bash](https://img.shields.io/badge/Bash-5.0+-brightgreen?logo=gnubash)](https://www.gnu.org/software/bash/)
 
----
-
 ## 📖 简介
 
-**EasyGost** 是专为原版 **Multi-EasyGost** 脚本打造的轻量化 Web 管理面板，具有以下亮点：
+**EasyGost** 是为原版 **Multi-EasyGost** 脚本配套的 Web 管理面板，提供以下特性：
 
-- ✨ **一键安装/卸载** - 交互式菜单，自动配置环境和系统依赖
-- 🌐 **可视化 Web 界面** - 响应式设计，适配手机/电脑，随时随地管理转发规则
-- 🐍 **零 Python 依赖** - 纯 Bash + `socat` 实现轻量 HTTP 服务，内存占用极低
-- 📊 **实时状态监测** - 直观显示 GOST 的运行状态及规则总数
-- 🔐 **登录身份鉴权** - 带密码保护的安全登录机制，防止未经授权的访问
-- ⚡ **规则批量导入** - 支持一键粘贴多条规则，校验通过后自动重载生效
-- 🔗 **新增 SOCKS5 落地中转** - 支持将流量经由中转机，通过 SOCKS5（支持账号/密码认证）中继至海外落地机
-
----
+- ✨ **一键安装/卸载** - 交互式菜单，自动安装依赖
+- 🌐 **Web 界面** - 图形化管理 GOST 规则，支持移动设备
+- 🐍 **零 Python 依赖** - 纯 Bash + socat 实现，运行更稳定
+- 📊 **实时状态** - 显示 GOST 服务状态和规则列表
+- 🎨 **现代设计** - 深色主题，响应式布局
+- 📱 **17 种规则类型** - 涵盖 TCP/UDP、TLS、WS、SS、SOCKS5 等
+- 🔐 **登录鉴权** - Web 面板带密码保护，防止未授权访问
+- ⚡ **批量添加规则** - 一次粘贴多条转发规则，瞬间生效
 
 ## 🏗️ 系统架构
 
 ```
 浏览器 :8888
-    └──▶ socat (TCP 监听，fork 处理并发)
-              └──▶ gost-web.sh (Bash HTTP 处理器)
+    └──▶ socat（TCP 监听，fork 处理并发）
+              └──▶ gost-web.sh（Bash HTTP 处理器）
                         ├── GET  /                  → 返回 index.html
                         ├── POST /api/login         → 验证账密 → 返回 Token
                         ├── GET  /api/rules         → 读取 rawconf → JSON
@@ -37,164 +34,303 @@
                         └── GET  /api/status        → systemctl is-active gost
 ```
 
-### 技术栈说明
+### 技术栈
 
 | 层级 | 技术 | 说明 |
-| :--- | :--- | :--- |
-| **前端** | HTML5 + CSS3 + Vanilla JS | 单文件实现，响应式排版，无任何外部 CDN 依赖 |
-| **后端** | Bash + socat | 纯 Shell 实现的极简 HTTP 服务器，无常驻臃肿后台进程 |
-| **服务管理** | systemd | 开机自启，进程挂掉自动拉起 |
-| **持久化** | 纯文本数据 | 规则保存在 `/etc/gost/rawconf`，按行存储，易于备份 |
+|------|------|------|
+| **前端** | HTML5 + CSS3 + JavaScript | 单文件，无外部 CDN 依赖 |
+| **后端** | Bash + socat | 纯 Shell HTTP 服务器 |
+| **服务管理** | systemd | 开机自启，自动重启 |
+| **配置** | 文本文件 | `/etc/gost/rawconf` |
 
----
+### 文件结构
+
+```
+EasyGost/
+├── install.sh        # 一键安装/卸载脚本（含交互菜单）
+├── gost-web.sh       # Bash HTTP 请求处理器
+├── gost-web.service  # Web 面板 systemd 服务定义
+├── config.json       # GOST 初始配置模板
+└── web/
+    └── index.html    # Web 管理界面（单文件，CSS+JS 全内联）
+```
 
 ## 🚀 快速开始
 
 ### 一键安装
 
-使用 curl 安装：
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/lgdglgc/EasyGost/main/install.sh)
 ```
+
 或使用 wget：
+
 ```bash
 bash <(wget -qO- https://raw.githubusercontent.com/lgdglgc/EasyGost/main/install.sh)
 ```
 
-在弹出的交互菜单中，输入 `1` 即可自动完成 GOST 与 Web 管理面板的部署。
-安装完成后，您可以通过浏览器访问：
+安装脚本会弹出菜单，选择 `1` 安装：
+
 ```
-http://您的服务器IP:8888
+╔════════════════════════════════════════╗
+║   EasyGost — GOST Web 管理面板         ║
+║   纯 Bash 实现，无 Python 依赖          ║
+╚════════════════════════════════════════╝
+
+ 1. 安装 GOST + Web 管理面板
+ 2. 卸载 GOST + Web 管理面板
+ 0. 退出
 ```
 
-> [!WARNING]
-> 如果您使用了代理软件，访问面板前请务必将服务器 IP 加入直连绕过规则，或者暂时关闭代理。
+安装完成后，打开浏览器访问：
 
----
+```
+http://你的服务器IP:8888
+```
 
-## 🔐 账户与安全
+> ⚠️ **注意**：如果你使用了 Clash/V2ray 等代理软件，请将服务器 IP 加入直连规则，或关闭代理后再访问。
 
-### 默认凭据
+## 🔐 登录账号
+
+首次访问 Web 面板时需要登录，默认账号密码如下：
 
 | 项目 | 默认值 |
-| :--- | :--- |
-| **管理账号** | `admin` |
-| **管理密码** | `admin123456` |
+|------|--------|
+| **账号** | `admin` |
+| **密码** | `admin123456` |
 
-### 修改默认账密
+### 修改账号密码
 
-编辑 `/opt/gost-web/gost-web.sh` 文件顶部的账户定义：
+编辑 `/opt/gost-web/gost-web.sh`，修改文件顶部的以下两行：
+
 ```bash
-ADMIN_USER="您的新账号"
-ADMIN_PASS="您的新密码"
+ADMIN_USER="admin"        # 修改为你的账号
+ADMIN_PASS="admin123456"  # 修改为你的密码
 ```
-保存后，重启 Web 面板服务即可生效：
+
+保存后重启 Web 面板服务生效：
+
 ```bash
 systemctl restart gost-web
 ```
 
-> [!NOTE]
-> 登录成功的身份 Token 暂存于 `/tmp/gost-web-token`，中转机重启或面板服务重载后会自动刷新，届时需要重新登录。
+> 💡 **说明**：登录 Token 存储于 `/tmp/gost-web-token`，重启服务器或面板后会自动刷新，需要重新登录。
 
 ---
 
-## 📋 支持的规则类型
+## ⚡ 批量添加规则
 
-| 类型值 | 界面显示名称 | 说明 / 使用场景 |
-| :--- | :--- | :--- |
-| `nonencrypt` | 不加密中转 | TCP+UDP 直接转发，适合普通国内中转 |
-| `encrypttls` | 加密TLS | 中转端：将流量加密后送入落地机 |
-| `encryptws` | 加密WS | 中转端：WebSocket 加密转发 |
-| `encryptwss` | 加密WSS | 中转端：支持 TLS 的 WebSocket 加密转发 |
-| `decrypttls` | 解密TLS | 落地端：接收并解密来自中转机的 TLS 流量 |
-| `decryptws` | 解密WS | 落地端：接收并解密来自中转机的 WS 流量 |
-| `decryptwss` | 解密WSS | 落地端：接收并解密来自中转机的 WSS 流量 |
-| `ss` | Shadowsocks | 创建本地 Shadowsocks 代理服务 |
-| `socks` | SOCKS5 | 创建本地 SOCKS5 代理服务（带认证） |
-| `transitsocks` | SOCKS5落地中转 | **链式代理**：中转机监听并经由落地 SOCKS5 中继流量（支持账密） |
-| `ocservsocks` | ocserv VPN 劫持中转 | **透明代理**：通过 iptables 自动劫持 AnyConnect (ocserv) 流量并由 SOCKS5 转发 |
-| `http` | HTTP | 创建本地 HTTP 代理服务 |
-| `peerno` | 均衡-无加密 | 轮询转发流量至多个落地机节点 |
-| `peertls` | 均衡-TLS | 轮询加密转发至多个落地机节点 |
-| `peerws` | 均衡-WS | 轮询以 WS 协议转发至多个落地机 |
-| `peerwss` | 均衡-WSS | 轮询以 WSS 协议转发至多个落地机 |
-| `cdnno` | CDN-无加密 | 利用 CDN 进行转发（无加密） |
-| `cdnws` | CDN-WS | 经过 CDN 进行 Websocket 隧道中转 |
-| `cdnwss` | CDN-WSS | 经过 CDN 进行 Websocket Secure 隧道中转 |
+批量添加是本面板的核心特色功能，特别适合需要**一次性导入大量转发规则**的场景，例如从服务商获取到一批节点列表后快速配置。
 
----
+### 打开批量添加窗口
 
-## ⚡ 批量导入规则
+登录面板后，点击规则列表右上角的 **「⚡ 批量添加」** 按钮即可打开批量添加弹窗。
 
-批量添加适合快速导入服务商提供的节点列表。
+### 填写格式
 
-### 格式要求
-每行代表一条规则，各个字段之间使用 **空格** 或 **Tab** 分隔：
+每行填写一条规则，格式如下：
+
 ```
-本地端口 落地IP/域名 落地端口
+本地端口  目标IP/域名  目标端口
 ```
 
-**正确范例：**
+字段之间使用**空格**或 **Tab** 分隔，三个字段缺一不可。
+
+**示例：**
+
 ```
 10000 1.2.3.4 443
 10001 1.2.3.4 444
-10002 example.com 8080
-# 如果是 SOCKS5 落地中转 (transitsocks)，且落地需要账密，可采用如下格式：
-10003 myuser:mypassword@5.6.7.8 1080
+10002 5.6.7.8 8080
+10003 example.com 443
+10004 node1.example.com 8388
+```
+
+### 选择规则类型
+
+在弹窗顶部的下拉菜单中选择转发类型，**该类型将统一应用到本次批量添加的所有规则**。
+
+> 💡 如需添加不同类型的规则，请分多次使用批量添加功能，每次选择对应类型。
+
+### 实时预览
+
+粘贴或输入内容后，弹窗会**实时解析**并展示预览区域：
+
+- ✅ **绿色 ✓**：该行格式正确，将被添加
+- ❌ **红色 ✗**：该行格式有误，附带错误原因（如端口超出范围、字段缺失等），**不会**被提交
+
+预览区显示格式：`本地端口 → 目标IP:目标端口`，同时统计有效/无效条数。
+
+### 提交与生效
+
+确认预览无误后，点击 **「✓ 批量保存并应用」** 按钮：
+
+1. 仅提交解析成功的有效规则
+2. 有效规则逐条追加到 `/etc/gost/rawconf`
+3. 后端重新生成 `config.json`
+4. 自动重启 `gost` 服务，规则立即生效
+5. 弹窗关闭，规则列表自动刷新
+
+### 常见错误与解决
+
+| 错误提示 | 原因 | 解决方法 |
+|----------|------|----------|
+| `格式错误，需 3 个字段` | 该行字段不足 3 个 | 补全「本地端口 目标IP 目标端口」三个字段 |
+| `本地端口无效: XXXX` | 端口非数字或超出 1-65535 范围 | 检查本地端口填写是否正确 |
+| `目标端口无效: XXXX` | 端口非数字或超出 1-65535 范围 | 检查目标端口填写是否正确 |
+| `没有有效规则` | 所有行均解析失败 | 检查整体格式，确保使用空格/Tab 分隔 |
+| `解析规则失败，无有效记录` | 后端解析异常 | 检查输入是否含特殊字符，重试 |
+
+### 批量添加 API（进阶）
+
+批量添加功能通过以下 API 实现，也可直接调用：
+
+```
+POST /api/rules/batch
+Header: X-Auth-Token: <你的Token>
+Content-Type: application/json
+```
+
+请求体格式：
+
+```json
+{
+  "type": "nonencrypt",
+  "rules": [
+    { "local_port": "10000", "dest_ip": "1.2.3.4", "dest_port": "443" },
+    { "local_port": "10001", "dest_ip": "1.2.3.4", "dest_port": "444" },
+    { "local_port": "10002", "dest_ip": "5.6.7.8", "dest_port": "8080" }
+  ]
+}
+```
+
+成功响应：
+
+```json
+{
+  "success": true,
+  "added": 3,
+  "message": "3 条规则已添加并重启"
+}
 ```
 
 ---
 
-## 🔧 维护命令
+## 🛠️ 常用命令
 
 ```bash
-# 查看 Web 管理面板状态
+# 查看 Web 面板状态
 systemctl status gost-web
 
-# 重启 Web 管理面板
+# 重启 Web 面板
 systemctl restart gost-web
 
-# 实时查看面板访问/操作日志
+# 查看面板日志
 journalctl -u gost-web -f
 
-# 查看 GOST 运行状态与出错日志
+# 查看 GOST 状态
 systemctl status gost
-journalctl -u gost -n 50 --no-pager
 
-# 重启 GOST 转发核心
+# 重启 GOST（规则改动后）
 systemctl restart gost
 ```
 
-### 修改 Web 面板端口
+## 📋 支持的规则类型
 
-默认监听 `8888` 端口。如果需要更换，请编辑 `/etc/systemd/system/gost-web.service` 文件，将 `TCP-LISTEN:8888` 中的端口修改为您需要的端口，然后运行：
+| 类型值 | 说明 | 使用场景 |
+|--------|------|----------|
+| `nonencrypt` | TCP+UDP 不加密转发 | 国内中转机 |
+| `encrypttls` | 加密隧道（TLS） | 中转机加密转发 |
+| `encryptws` | 加密隧道（WS） | 中转机加密转发 |
+| `encryptwss` | 加密隧道（WSS） | 中转机加密转发 |
+| `decrypttls` | 解密（TLS） | 落地机对接 |
+| `decryptws` | 解密（WS） | 落地机对接 |
+| `decryptwss` | 解密（WSS） | 落地机对接 |
+| `ss` | Shadowsocks 代理 | 轻量代理 |
+| `socks` | SOCKS5 代理 | 通用代理 |
+| `http` | HTTP 代理 | 通用代理 |
+| `peerno` | 均衡负载（无加密） | 多落地轮询 |
+| `peertls` | 均衡负载（TLS） | 多落地轮询 |
+| `peerws` | 均衡负载（WS） | 多落地轮询 |
+| `peerwss` | 均衡负载（WSS） | 多落地轮询 |
+| `cdnno` | CDN 转发（无加密） | CDN 自选节点 |
+| `cdnws` | CDN 转发（WS） | CDN 隧道 |
+| `cdnwss` | CDN 转发（WSS） | CDN 隧道 |
+
+## 💻 系统要求
+
+- **操作系统**: Linux（CentOS 7+、Ubuntu 18.04+、Debian 9+）
+- **依赖**: `socat`、`wget`（安装脚本自动安装）
+- **权限**: 需要 root 权限
+- **GOST**: 脚本会自动下载安装 GOST v2.11.2
+
+## 🐛 故障排除
+
+### Web 无法访问
+
+```bash
+# 1. 检查面板服务是否运行
+systemctl status gost-web
+
+# 2. 检查端口是否在监听
+ss -tulnp | grep 8888
+
+# 3. 本地测试是否正常响应
+curl -I http://127.0.0.1:8888/
+
+# 4. 查看错误日志
+journalctl -u gost-web -n 50 --no-pager
+```
+
+### 规则不生效
+
+```bash
+# 查看 GOST 状态和日志
+systemctl status gost
+journalctl -u gost -n 30
+
+# 检查配置文件是否正确生成
+cat /etc/gost/config.json
+```
+
+### 批量添加后规则未出现
+
+```bash
+# 检查 rawconf 是否已写入
+cat /etc/gost/rawconf
+
+# 检查 GOST 是否成功重启
+systemctl status gost
+journalctl -u gost -n 20 --no-pager
+```
+
+### 修改 Web 端口
+
+编辑 `/etc/systemd/system/gost-web.service`，将 `8888` 改为目标端口，然后：
+
 ```bash
 systemctl daemon-reload && systemctl restart gost-web
 ```
 
----
+## 📚 相关资源
 
-## 🐛 常见排查与故障解决
+- [GOST 官方文档](https://docs.ginuerzh.xyz/gost/)
+- [Multi-EasyGost 原始项目](https://github.com/KANIKIG/Multi-EasyGost)
+- [GOST GitHub 仓库](https://github.com/ginuerzh/gost)
 
-### Web 页面打不开
-1. 检查面板服务是否在运行：`systemctl status gost-web`
-2. 检查 8888 端口是否处于监听状态：`ss -tulnp | grep 8888`
-3. 若端口被占用，请更换端口。
-4. 本地使用 curl 测试能否连通：`curl -I http://127.0.0.1:8888/`
+## 🤝 贡献
 
-### 规则设置后不生效
-1. 检查 GOST 服务的状态：`systemctl status gost`
-2. 查看 GOST 报错日志：`journalctl -u gost -n 30`
-3. 检查解析后的配置文件格式是否正确：`cat /etc/gost/config.json`
-4. 检查最原始的配置文件记录：`cat /etc/gost/rawconf`
+欢迎提交 Issue 和 Pull Request！
 
----
+## 📄 许可证
 
-## 🤝 参与贡献与致谢
+MIT License - 详见 [LICENSE](LICENSE) 文件
 
-- 感谢 [@ginuerzh](https://github.com/ginuerzh) 带来的优秀工具 [GOST](https://github.com/ginuerzh/gost)。
-- 感谢 [@KANIKIG](https://github.com/KANIKIG) 的 [Multi-EasyGost](https://github.com/KANIKIG/Multi-EasyGost) 核心转发脚本逻辑。
+## 🙏 致谢
+
+- 感谢 [@ginuerzh](https://github.com/ginuerzh) 开发的 [GOST](https://github.com/ginuerzh/gost)
+- 感谢 [@KANIKIG](https://github.com/KANIKIG) 的 [Multi-EasyGost](https://github.com/KANIKIG/Multi-EasyGost) 脚本
 
 ---
 
-**祝您使用愉快！** 🚀
+**祝您使用愉快！** 🎉
